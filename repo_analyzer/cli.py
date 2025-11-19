@@ -76,8 +76,10 @@ def merge_config(file_config: Dict[str, Any], cli_args: argparse.Namespace) -> D
     if cli_args.output_dir is not None:
         config['output_dir'] = cli_args.output_dir
     
-    if cli_args.dry_run is not None:
-        config['dry_run'] = cli_args.dry_run
+    # Only override dry_run if explicitly set by user (not just the default False)
+    # We distinguish user-provided flag from default by checking if it's True
+    if cli_args.dry_run:
+        config['dry_run'] = True
     
     # Set defaults if not specified
     if 'output_dir' not in config:
@@ -106,19 +108,18 @@ def validate_output_path(output_dir: str) -> Path:
     try:
         path = Path(output_dir).resolve()
         
-        # Ensure path is not absolute outside working directory
+        # Ensure path is not outside working directory
         # This prevents writing to arbitrary locations on the filesystem
         cwd = Path.cwd().resolve()
         
-        # If path is not relative to cwd, it's trying to escape
+        # Check if path is relative to cwd (i.e., inside the repository)
         try:
             path.relative_to(cwd)
         except ValueError:
-            # Path is outside cwd, check if it's a relative path specification
-            if os.path.isabs(output_dir):
-                raise PathValidationError(
-                    f"Absolute paths outside repository are not allowed: {output_dir}"
-                )
+            # Path is outside cwd - reject regardless of whether input was absolute or relative
+            raise PathValidationError(
+                f"Output path outside repository is not allowed: {output_dir}"
+            )
         
         return path
     except Exception as e:
