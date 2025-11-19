@@ -210,7 +210,7 @@ This document provides an overview of the repository analysis results.
 See [tree.md](tree.md) for the complete directory structure.
 
 ### File Summaries
-See [file-summaries/](file-summaries/) for individual file analysis reports.
+See [file-summaries.md](file-summaries.md) for individual file analysis reports.
 
 ### Dependencies
 See [dependencies.json](dependencies.json) for dependency information.
@@ -219,7 +219,8 @@ See [dependencies.json](dependencies.json) for dependency information.
 
 - **tree.md**: Complete directory tree structure
 - **tree.json**: Machine-readable tree structure
-- **file-summaries/**: Directory containing per-file analysis
+- **file-summaries.md**: Markdown report with file analysis
+- **file-summaries.json**: Machine-readable file summaries
 - **dependencies.json**: Dependency graph and package information
 
 ## Analysis Metadata
