@@ -680,3 +680,40 @@ class TestGenerateFileSummaries:
         # Should only have main.py, not generated.py from docs/_build
         assert data['total_files'] == 1
         assert data['files'][0]['path'] == 'main.py'
+    
+    def test_path_exclude_patterns_dont_over_exclude(self, tmp_path):
+        """Test that path-based exclude patterns don't exclude unrelated directories with same name."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        (source / 'main.py').touch()
+        
+        # Create multiple _build directories in different locations
+        docs_build = source / 'docs' / '_build'
+        docs_build.mkdir(parents=True)
+        (docs_build / 'docs_generated.py').touch()
+        
+        src_build = source / 'src' / '_build'
+        src_build.mkdir(parents=True)
+        (src_build / 'src_generated.py').touch()
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        # Exclude only docs/_build, not src/_build
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            exclude_patterns=['docs/_build']
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        paths = [entry['path'] for entry in data['files']]
+        # Should have main.py and src/_build/src_generated.py, but not docs/_build/docs_generated.py
+        assert 'main.py' in paths
+        assert 'src/_build/src_generated.py' in paths
+        assert 'docs/_build/docs_generated.py' not in paths
+        assert data['total_files'] == 2
