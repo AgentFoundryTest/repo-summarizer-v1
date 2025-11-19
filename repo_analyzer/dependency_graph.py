@@ -235,13 +235,33 @@ def _parse_js_imports(content: str, file_path: Path) -> List[str]:
     
     # Helper function to check if a position is inside a string literal
     def is_in_string(text: str, pos: int) -> bool:
-        """Check if position is inside a string literal."""
-        # Count quotes before this position
+        """Check if position is inside a string literal, handling escaped quotes."""
+        # Count quotes before this position, excluding escaped ones
         before = text[:pos]
+        
+        # Count unescaped quotes for each type
+        def count_unescaped(s: str, quote: str) -> int:
+            count = 0
+            i = 0
+            while i < len(s):
+                if s[i] == quote:
+                    # Check if this quote is escaped
+                    # Count preceding backslashes
+                    num_backslashes = 0
+                    j = i - 1
+                    while j >= 0 and s[j] == '\\':
+                        num_backslashes += 1
+                        j -= 1
+                    # If even number of backslashes (including 0), quote is not escaped
+                    if num_backslashes % 2 == 0:
+                        count += 1
+                i += 1
+            return count
+        
         # Check for each type of quote
-        in_single = before.count("'") % 2 == 1
-        in_double = before.count('"') % 2 == 1
-        in_template = before.count('`') % 2 == 1
+        in_single = count_unescaped(before, "'") % 2 == 1
+        in_double = count_unescaped(before, '"') % 2 == 1
+        in_template = count_unescaped(before, '`') % 2 == 1
         return in_single or in_double or in_template
     
     # Find ES6 imports (multi-line safe)
@@ -536,17 +556,27 @@ def build_dependency_graph(
     except Exception as e:
         raise DependencyGraphError(f"Failed to scan files: {e}")
     
-    # Build dependency map
+    # Normalize root_path to absolute for consistent comparisons
+    root_path = root_path.resolve()
+    
+    # Build dependency map - normalize all file paths to absolute
     dependency_map: Dict[Path, List[Path]] = {}
-    all_files: Set[Path] = set(files)
+    # Normalize all files to absolute paths for consistent comparisons
+    all_files: Set[Path] = {f.resolve() for f in files}
     
     for file_path in files:
         try:
-            deps = _scan_file_dependencies(file_path, root_path)
-            dependency_map[file_path] = deps
+            # Normalize file_path to absolute
+            file_path_abs = file_path.resolve()
+            deps = _scan_file_dependencies(file_path_abs, root_path)
+            dependency_map[file_path_abs] = deps
         except Exception as e:
-            errors.append(f"Error scanning {file_path.relative_to(root_path)}: {e}")
-            dependency_map[file_path] = []
+            try:
+                rel = file_path.relative_to(root_path)
+            except ValueError:
+                rel = file_path
+            errors.append(f"Error scanning {rel}: {e}")
+            dependency_map[file_path.resolve()] = []
     
     # Build graph structure
     nodes = []

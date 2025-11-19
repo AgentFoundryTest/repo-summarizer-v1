@@ -344,6 +344,26 @@ const realReq = require('./real-require');
         assert './fake' not in imports
         assert './fake-require' not in imports
         assert './fake-template' not in imports
+    
+    def test_escaped_quotes_in_strings(self, tmp_path):
+        """Test that imports inside strings with escaped quotes are ignored."""
+        content = '''
+const msg = "He said \\"import foo from './fake'\\"";
+const doc = 'Example: \\'require("./also-fake")\\' works';
+
+// Real imports
+import real from './real-module';
+const realReq = require('./real-require');
+'''
+        file_path = tmp_path / "test.js"
+        imports = _parse_js_imports(content, file_path)
+        
+        # Should only capture the real imports
+        assert './real-module' in imports
+        assert './real-require' in imports
+        # Should NOT capture the fake ones in strings with escaped quotes
+        assert './fake' not in imports
+        assert './also-fake' not in imports
 
 
 class TestResolvePythonImport:
@@ -775,6 +795,40 @@ import utils  # Third time
         
         # Should only have one edge despite multiple imports
         assert len(edges_to_utils) == 1
+    
+    def test_relative_root_path_js_dependencies(self, tmp_path):
+        """Test that JS dependencies work with relative root paths."""
+        # Create a structure
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        
+        utils = src_dir / "utils.js"
+        utils.write_text("export const util = 42;")
+        
+        main = src_dir / "main.js"
+        main.write_text("import { util } from './utils';")
+        
+        # Use relative path (not absolute)
+        import os
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            graph_data, errors = build_dependency_graph(
+                Path("src"),  # Relative path
+                include_patterns=['*.js']
+            )
+        finally:
+            os.chdir(old_cwd)
+        
+        # Should still find the dependency
+        assert len(graph_data['nodes']) == 2
+        assert len(graph_data['edges']) == 1
+        assert len(errors) == 0
+        
+        # Check edge exists
+        edge = graph_data['edges'][0]
+        assert 'main.js' in edge['source']
+        assert 'utils.js' in edge['target']
 
 
 class TestGenerateDependencyReport:
