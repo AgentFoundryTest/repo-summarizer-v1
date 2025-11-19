@@ -287,19 +287,29 @@ def run_scan(config: Dict[str, Any]) -> int:
         file_summary_config = config.get('file_summary_config', {})
         include_patterns = file_summary_config.get('include_patterns', [])
         
-        # Get exclude patterns from file_summary_config, fallback to tree_config
+        # Get exclude patterns from file_summary_config
         file_exclude_patterns = file_summary_config.get('exclude_patterns', [])
         
-        # Build exclude_dirs from tree_config exclude_patterns
+        # Import default excludes from tree_report
+        from repo_analyzer.tree_report import DEFAULT_EXCLUDES
+        
+        # Start with default excludes to handle the "no config" case
+        # This ensures noise directories are ignored by default
+        all_exclude_patterns = list(DEFAULT_EXCLUDES)
+        
+        # Add tree_config exclude patterns
+        all_exclude_patterns.extend(exclude_patterns)
+        
+        # Add file_summary_config exclude patterns
+        all_exclude_patterns.extend(file_exclude_patterns)
+        
+        # Build exclude_dirs from all exclude patterns
         # Only add patterns that are bare directory names (no path separator or wildcard)
         exclude_dirs = set()
-        for pattern in exclude_patterns:
+        for pattern in all_exclude_patterns:
             if '*' not in pattern and '/' not in pattern:
                 # Simple directory name like "node_modules", "__pycache__"
                 exclude_dirs.add(pattern)
-        
-        # Combine all exclude patterns for glob matching
-        all_exclude_patterns = list(exclude_patterns) + file_exclude_patterns
         
         generate_file_summaries(
             root_path=repo_root,
