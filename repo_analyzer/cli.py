@@ -133,13 +133,18 @@ def validate_output_path(output_dir: str) -> Path:
         PathValidationError: If path is invalid
     """
     try:
-        path = Path(output_dir).resolve()
-        
         # Get repository root, fall back to current working directory if not in a git repo
         repo_root = get_repository_root()
         if repo_root is None:
             # Not in a git repository, use current working directory as boundary
             repo_root = Path.cwd().resolve()
+        
+        # Resolve relative paths against repository root for deterministic behavior
+        # Absolute paths are used as-is
+        if os.path.isabs(output_dir):
+            path = Path(output_dir).resolve()
+        else:
+            path = (repo_root / output_dir).resolve()
         
         # Check if path is relative to repo root (i.e., inside the repository)
         try:
