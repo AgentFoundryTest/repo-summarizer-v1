@@ -59,7 +59,13 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         ConfigurationError: If config file is invalid
     """
     if config_path is None:
-        config_path = DEFAULT_CONFIG_FILE
+        # Default config should be at repository root
+        repo_root = get_repository_root()
+        if repo_root is not None:
+            config_path = str(repo_root / DEFAULT_CONFIG_FILE)
+        else:
+            # Not in a git repository, use cwd
+            config_path = DEFAULT_CONFIG_FILE
     
     # If config file doesn't exist, return empty config
     if not os.path.exists(config_path):
