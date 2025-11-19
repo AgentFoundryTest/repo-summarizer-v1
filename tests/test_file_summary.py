@@ -717,3 +717,35 @@ class TestGenerateFileSummaries:
         assert 'src/_build/src_generated.py' in paths
         assert 'docs/_build/docs_generated.py' not in paths
         assert data['total_files'] == 2
+    
+    def test_output_directory_excluded(self, tmp_path):
+        """Test that output directory itself is excluded from scan."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        (source / 'main.py').touch()
+        
+        # Create output directory as a subdirectory of source
+        output = source / 'output'
+        output.mkdir()
+        
+        # First, generate summaries which will create files in output
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py', '*.md'],
+            exclude_patterns=['output']  # Explicitly exclude output dir
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        paths = [entry['path'] for entry in data['files']]
+        # Should only have main.py, not the generated file-summaries.md or any output files
+        assert paths == ['main.py']
+        assert data['total_files'] == 1
+        
+        # Verify file-summaries.md and file-summaries.json exist in output
+        assert (output / 'file-summaries.md').exists()
+        assert (output / 'file-summaries.json').exists()
+

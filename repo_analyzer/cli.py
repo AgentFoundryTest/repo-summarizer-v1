@@ -304,6 +304,16 @@ def run_scan(config: Dict[str, Any]) -> int:
         # Add file_summary_config exclude patterns
         all_exclude_patterns.extend(file_exclude_patterns)
         
+        # Exclude the output directory to avoid scanning generated reports
+        try:
+            output_rel = output_dir.relative_to(repo_root)
+            # Add as both a pattern and to exclude_dirs if it's a simple name
+            all_exclude_patterns.append(str(output_rel.as_posix()))
+        except ValueError:
+            # output_dir is not relative to repo_root (e.g., absolute path outside repo)
+            # In this case, it won't be scanned anyway
+            pass
+        
         # Build exclude_dirs from all exclude patterns
         # Only add patterns that are bare directory names (no path separator or wildcard)
         exclude_dirs = set()
