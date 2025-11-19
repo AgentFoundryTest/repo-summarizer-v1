@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from repo_analyzer.tree_report import generate_tree_report, TreeReportError
+
 
 DEFAULT_CONFIG_FILE = "repo-analyzer.config.json"
 DEFAULT_OUTPUT_DIR = "repo-analysis-output"
@@ -204,7 +206,7 @@ This document provides an overview of the repository analysis results.
 ## Analysis Components
 
 ### Directory Tree
-See [tree.txt](tree.txt) for the complete directory structure.
+See [tree.md](tree.md) for the complete directory structure.
 
 ### File Summaries
 See [file-summaries/](file-summaries/) for individual file analysis reports.
@@ -214,7 +216,8 @@ See [dependencies.json](dependencies.json) for dependency information.
 
 ## Generated Reports
 
-- **tree.txt**: Complete directory tree structure
+- **tree.md**: Complete directory tree structure
+- **tree.json**: Machine-readable tree structure
 - **file-summaries/**: Directory containing per-file analysis
 - **dependencies.json**: Dependency graph and package information
 
@@ -260,8 +263,25 @@ def run_scan(config: Dict[str, Any]) -> int:
         # Write summary template
         write_summary_template(output_dir, dry_run)
         
-        # TODO: Hook points for generators
-        # - Tree generator: generate_tree(output_dir, dry_run)
+        # Generate tree report
+        repo_root = get_repository_root()
+        if repo_root is None:
+            repo_root = Path.cwd()
+        
+        tree_config = config.get('tree_config', {})
+        exclude_patterns = tree_config.get('exclude_patterns', [])
+        max_depth = tree_config.get('max_depth')
+        
+        generate_tree_report(
+            root_path=repo_root,
+            output_dir=output_dir,
+            exclude_patterns=exclude_patterns,
+            max_depth=max_depth,
+            generate_json=True,
+            dry_run=dry_run
+        )
+        
+        # TODO: Hook points for other generators
         # - File summary generator: generate_file_summaries(output_dir, dry_run)
         # - Dependency generator: generate_dependencies(output_dir, dry_run)
         
@@ -272,7 +292,7 @@ def run_scan(config: Dict[str, Any]) -> int:
         
         return 0
     
-    except (ConfigurationError, PathValidationError) as e:
+    except (ConfigurationError, PathValidationError, TreeReportError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     except Exception as e:
