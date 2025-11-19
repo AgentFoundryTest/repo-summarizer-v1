@@ -161,11 +161,11 @@ class TestBuildTreeStructure:
         with pytest.raises(TreeReportError, match="not a directory"):
             _build_tree_structure(file_path, set())
     
-    def test_permission_error_propagates(self, tmp_path):
+    def test_permission_error_propagates(self, tmp_path, monkeypatch):
         """Test that permission errors are propagated as TreeReportError."""
-        import stat
+        from pathlib import Path
         
-        # Create a directory structure with a protected subdirectory
+        # Create a directory structure
         (tmp_path / "accessible").mkdir()
         (tmp_path / "accessible" / "file.txt").touch()
         
@@ -173,16 +173,19 @@ class TestBuildTreeStructure:
         protected_dir.mkdir()
         (protected_dir / "secret.txt").touch()
         
-        # Remove read permissions from protected directory
-        protected_dir.chmod(0o000)
+        # Mock iterdir to raise PermissionError for the protected directory
+        original_iterdir = Path.iterdir
         
-        try:
-            # Attempting to build tree should raise TreeReportError
-            with pytest.raises(TreeReportError, match="Failed to read"):
-                _build_tree_structure(tmp_path, set())
-        finally:
-            # Restore permissions for cleanup
-            protected_dir.chmod(0o755)
+        def mock_iterdir(self):
+            if self.name == "protected":
+                raise PermissionError(f"[Errno 13] Permission denied: '{self}'")
+            return original_iterdir(self)
+        
+        monkeypatch.setattr(Path, "iterdir", mock_iterdir)
+        
+        # Attempting to build tree should raise TreeReportError
+        with pytest.raises(TreeReportError, match="Failed to read"):
+            _build_tree_structure(tmp_path, set())
 
 
 class TestTreeToMarkdown:
