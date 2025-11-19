@@ -261,6 +261,14 @@ def _resolve_python_import(
     # Try to resolve from repo root
     target = repo_root / parts[0]
     
+    # Check if it's a file at the root level (e.g., util.py)
+    if target.with_suffix('.py').exists():
+        # Single-part import like "import util" where util.py is at root
+        if len(parts) == 1:
+            return target.with_suffix('.py')
+        # Multi-part import - the file exists but we need to navigate further
+        # This is unusual but handle it
+    
     # Check if it's a package in the repo
     if not target.exists():
         return None
@@ -363,15 +371,18 @@ def _scan_file_dependencies(
     
     Returns:
         List of resolved dependency file paths
+        
+    Raises:
+        IOError/OSError: If the file cannot be read
     """
     dependencies = []
     
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-    except (IOError, OSError):
-        # If we can't read the file, return empty dependencies
-        return dependencies
+    except (IOError, OSError) as e:
+        # Re-raise the error so it can be caught and recorded in build_dependency_graph
+        raise IOError(f"Cannot read file: {e}")
     
     # Determine file type and parse accordingly
     suffix = file_path.suffix.lower()

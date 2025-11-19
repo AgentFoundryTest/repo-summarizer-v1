@@ -326,6 +326,21 @@ class TestResolvePythonImport:
         
         assert resolved is not None
         assert resolved == package / "module.py"
+    
+    def test_root_level_module(self, tmp_path):
+        """Test resolving root-level module imported absolutely."""
+        # Create root-level file
+        (tmp_path / "util.py").touch()
+        
+        source_file = tmp_path / "subdir" / "main.py"
+        source_file.parent.mkdir()
+        source_file.touch()
+        
+        # Should resolve util.py at root
+        resolved = _resolve_python_import('util', source_file, tmp_path)
+        
+        assert resolved is not None
+        assert resolved == tmp_path / "util.py"
 
 
 class TestResolveJSImport:
@@ -453,13 +468,13 @@ import React from 'react';
         assert tmp_path / "config.js" in deps
         assert len([d for d in deps if 'react' in str(d)]) == 0
     
-    def test_unreadable_file_returns_empty(self, tmp_path):
-        """Test that unreadable files return empty dependencies."""
+    def test_unreadable_file_raises_error(self, tmp_path):
+        """Test that unreadable files raise IOError."""
         file_path = tmp_path / "missing.py"
         
-        deps = _scan_file_dependencies(file_path, tmp_path)
-        
-        assert deps == []
+        # File doesn't exist, should raise IOError
+        with pytest.raises(IOError, match="Cannot read file"):
+            _scan_file_dependencies(file_path, tmp_path)
     
     def test_unsupported_file_type_returns_empty(self, tmp_path):
         """Test that unsupported file types return empty dependencies."""
