@@ -538,13 +538,22 @@ def generate_dependency_report(
                 f.write(markdown_content)
             print(f"Dependency graph Markdown written: {markdown_path}")
         
-        # Report errors to console
-        if errors and not dry_run:
-            print(f"\nWarning: {len(errors)} error(s) occurred during dependency analysis")
-            for error in errors[:5]:  # Show first 5 errors
-                print(f"  - {error}")
-            if len(errors) > 5:
-                print(f"  ... and {len(errors) - 5} more")
+        # Report errors to console and raise exception if any errors occurred
+        if errors:
+            if not dry_run:
+                print(f"\nError: {len(errors)} error(s) occurred during dependency analysis")
+                for error in errors[:5]:  # Show first 5 errors
+                    print(f"  - {error}")
+                if len(errors) > 5:
+                    print(f"  ... and {len(errors) - 5} more")
+            # Raise exception to ensure non-zero exit code
+            raise DependencyGraphError(
+                f"Dependency graph generation failed with {len(errors)} error(s). "
+                f"See dependencies.md for details."
+            )
     
+    except DependencyGraphError:
+        # Re-raise DependencyGraphError as-is
+        raise
     except Exception as e:
         raise DependencyGraphError(f"Failed to generate dependency report: {e}")

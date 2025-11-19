@@ -713,3 +713,30 @@ from . import config
         # (or appear empty)
         # This tests that the code handles the error reporting structure
         assert md_file.exists()
+    
+    def test_scan_errors_cause_failure(self, tmp_path, monkeypatch):
+        """Test that scan errors raise DependencyGraphError."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        (source / "main.py").write_text("import os")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        # Mock _scan_file_dependencies to raise an exception
+        from repo_analyzer import dependency_graph
+        original_scan = dependency_graph._scan_file_dependencies
+        
+        def mock_scan_with_error(file_path, repo_root):
+            raise IOError("Simulated file read error")
+        
+        monkeypatch.setattr(dependency_graph, "_scan_file_dependencies", mock_scan_with_error)
+        
+        # Should raise DependencyGraphError due to scan errors
+        with pytest.raises(DependencyGraphError, match="Dependency graph generation failed"):
+            generate_dependency_report(
+                source,
+                output,
+                include_patterns=['*.py']
+            )
