@@ -160,6 +160,29 @@ class TestBuildTreeStructure:
         
         with pytest.raises(TreeReportError, match="not a directory"):
             _build_tree_structure(file_path, set())
+    
+    def test_permission_error_propagates(self, tmp_path):
+        """Test that permission errors are propagated as TreeReportError."""
+        import stat
+        
+        # Create a directory structure with a protected subdirectory
+        (tmp_path / "accessible").mkdir()
+        (tmp_path / "accessible" / "file.txt").touch()
+        
+        protected_dir = tmp_path / "protected"
+        protected_dir.mkdir()
+        (protected_dir / "secret.txt").touch()
+        
+        # Remove read permissions from protected directory
+        protected_dir.chmod(0o000)
+        
+        try:
+            # Attempting to build tree should raise TreeReportError
+            with pytest.raises(TreeReportError, match="Failed to read"):
+                _build_tree_structure(tmp_path, set())
+        finally:
+            # Restore permissions for cleanup
+            protected_dir.chmod(0o755)
 
 
 class TestTreeToMarkdown:

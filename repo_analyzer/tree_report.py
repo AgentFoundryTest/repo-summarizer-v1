@@ -113,9 +113,9 @@ def _build_tree_structure(
                         current_depth + 1
                     )
                     tree["children"].append(subtree)
-                except (PermissionError, OSError):
-                    # Skip directories we can't access
-                    continue
+                except (PermissionError, OSError) as e:
+                    # Re-raise as TreeReportError so errors surface upward
+                    raise TreeReportError(f"Failed to read subdirectory {entry}: {e}")
             elif entry.is_file():
                 tree["children"].append({
                     "type": "file",
