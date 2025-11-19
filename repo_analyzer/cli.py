@@ -271,13 +271,14 @@ def run_scan(config: Dict[str, Any]) -> int:
         tree_config = config.get('tree_config', {})
         exclude_patterns = tree_config.get('exclude_patterns', [])
         max_depth = tree_config.get('max_depth')
+        generate_json = tree_config.get('generate_json', True)
         
         generate_tree_report(
             root_path=repo_root,
             output_dir=output_dir,
             exclude_patterns=exclude_patterns,
             max_depth=max_depth,
-            generate_json=True,
+            generate_json=generate_json,
             dry_run=dry_run
         )
         
