@@ -1437,5 +1437,72 @@ export default MyComponent;
         assert "export foo" in exports
         assert "export baz" in exports
         assert "export bar" not in exports
+    
+    def test_summary_includes_structure_at_detailed_level(self, tmp_path):
+        """Test that natural language summaries include structure info at detailed level."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Test with Python file
+        py_file = source / 'module.py'
+        py_file.write_text("""
+def function_one():
+    pass
+
+def function_two():
+    pass
+
+class MyClass:
+    pass
+""")
+        
+        summary = _create_structured_summary(
+            py_file, source, detail_level='detailed', include_legacy=True
+        )
+        
+        # Summary should include structure info
+        assert 'summary' in summary
+        assert 'function_one' in summary['summary'] or 'function function_one' in summary['summary']
+        assert 'function_two' in summary['summary'] or 'function function_two' in summary['summary']
+        assert 'MyClass' in summary['summary'] or 'class MyClass' in summary['summary']
+        
+        # Test with JS file
+        js_file = source / 'api.js'
+        js_file.write_text("""
+export function fetchData() {}
+export class Client {}
+""")
+        
+        summary = _create_structured_summary(
+            js_file, source, detail_level='detailed', include_legacy=True
+        )
+        
+        # Summary should include structure info
+        assert 'summary' in summary
+        assert 'fetchData' in summary['summary']
+        assert 'Client' in summary['summary']
+    
+    def test_summary_structure_truncation(self, tmp_path):
+        """Test that summaries with many declarations show truncation indicator."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Create file with many functions
+        py_file = source / 'many.py'
+        functions = "\n".join([f"def func_{i}():\n    pass\n" for i in range(10)])
+        py_file.write_text(functions)
+        
+        summary = _create_structured_summary(
+            py_file, source, detail_level='detailed', include_legacy=True
+        )
+        
+        # Summary should show truncation
+        assert 'summary' in summary
+        assert '+' in summary['summary']  # Should have "+N more" indicator
+        assert 'more' in summary['summary']
 
 

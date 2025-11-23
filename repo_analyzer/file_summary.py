@@ -568,15 +568,48 @@ def _create_structured_summary(
     except (OSError, IOError):
         file_size = 0
     
+    # Parse structure first if at detailed level (needed for enhanced summaries)
+    declarations = []
+    structure_warning = None
+    
+    if detail_level == "detailed":
+        if file_too_large:
+            structure_warning = f"File exceeds {max_file_size_kb}KB limit, skipping expensive parsing"
+        elif parse_error:
+            structure_warning = parse_error
+        elif content is not None:
+            # Parse declarations based on language
+            if language == "Python":
+                declarations, error = _parse_python_declarations(content)
+                if error:
+                    structure_warning = error
+            elif language in ["JavaScript", "TypeScript"]:
+                declarations, warning = _parse_js_ts_exports(content)
+                if warning:
+                    structure_warning = warning
+            else:
+                structure_warning = f"No parser available for {language}"
+    
     # Add legacy summary field for backward compatibility
     if include_legacy:
         # Generate enhanced summary that includes structure info when available
         base_summary = _generate_heuristic_summary(file_path, root_path)
         
-        # Enhance summary with role information
+        # Enhance summary with role and structure information
         summary_parts = [base_summary]
+        
         if role != "implementation":
             summary_parts.append(f"(role: {role})")
+        
+        # Add structure information if available (detailed level with declarations)
+        if detail_level == "detailed" and declarations:
+            if len(declarations) <= 3:
+                # Show all declarations if 3 or fewer
+                decl_summary = ", ".join(declarations)
+            else:
+                # Show first 3 and indicate there are more
+                decl_summary = ", ".join(declarations[:3]) + f", +{len(declarations) - 3} more"
+            summary_parts.append(f"[{decl_summary}]")
         
         summary["summary"] = " ".join(summary_parts)
         # Also add as summary_text for additional compatibility
@@ -597,26 +630,6 @@ def _create_structured_summary(
     
     # Add structure field for detailed level
     if detail_level == "detailed":
-        declarations = []
-        structure_warning = None
-        
-        if file_too_large:
-            structure_warning = f"File exceeds {max_file_size_kb}KB limit, skipping expensive parsing"
-        elif parse_error:
-            structure_warning = parse_error
-        elif content is not None:
-            # Parse declarations based on language
-            if language == "Python":
-                declarations, error = _parse_python_declarations(content)
-                if error:
-                    structure_warning = error
-            elif language in ["JavaScript", "TypeScript"]:
-                declarations, warning = _parse_js_ts_exports(content)
-                if warning:
-                    structure_warning = warning
-            else:
-                structure_warning = f"No parser available for {language}"
-        
         summary["structure"] = {
             "declarations": declarations,
         }
