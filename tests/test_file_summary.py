@@ -809,6 +809,10 @@ class TestStructuredSummarySchema:
             ('__init__.py', 'module-init'),
             ('README.md', 'documentation'),
             ('custom_module.py', 'implementation'),
+            # Edge cases: should NOT be classified as test
+            ('testament.py', 'implementation'),  # Starts with "test" but not a test file
+            ('testing.py', 'implementation'),  # Starts with "test" but not a test file
+            ('test.py', 'test'),  # Exact match "test" should be classified as test
         ]
         
         for filename, expected_role in test_cases:

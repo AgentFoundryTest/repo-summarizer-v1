@@ -143,7 +143,10 @@ def _detect_file_role(file_path: Path, root_path: Path) -> str:
         path_parts = []
     
     # Test files
-    if name_lower.startswith('test_') or name_lower.endswith('_test') or name_lower.startswith('test'):
+    if name_lower.startswith('test_') or name_lower.endswith('_test'):
+        return "test"
+    # Only match "test" as exact name, not as prefix to avoid false positives like "testament.py"
+    if name_lower == 'test':
         return "test"
     if path_parts and path_parts[0].lower() in ['tests', 'test']:
         return "test"
@@ -256,7 +259,10 @@ def _generate_heuristic_summary(file_path: Path, root_path: Path) -> str:
         return f"{language} configuration file"
     
     # Test files
-    if name_lower.startswith('test_') or name_lower.endswith('_test') or name_lower.startswith('test'):
+    if name_lower.startswith('test_') or name_lower.endswith('_test'):
+        return f"{language} test file"
+    # Only match "test" as exact name to avoid false positives
+    if name_lower == 'test':
         return f"{language} test file"
     
     # Main/entry point files
