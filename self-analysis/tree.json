@@ -1,0 +1,156 @@
+{
+  "type": "directory",
+  "name": "repo-summarizer-v1",
+  "children": [
+    {
+      "type": "directory",
+      "name": ".pytest_cache",
+      "children": [
+        {
+          "type": "directory",
+          "name": "v",
+          "children": [
+            {
+              "type": "directory",
+              "name": "cache",
+              "children": [
+                {
+                  "type": "file",
+                  "name": "lastfailed"
+                },
+                {
+                  "type": "file",
+                  "name": "nodeids"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "file",
+          "name": ".gitignore"
+        },
+        {
+          "type": "file",
+          "name": "CACHEDIR.TAG"
+        },
+        {
+          "type": "file",
+          "name": "README.md"
+        }
+      ]
+    },
+    {
+      "type": "directory",
+      "name": "repo_analyzer",
+      "children": [
+        {
+          "type": "file",
+          "name": "__init__.py"
+        },
+        {
+          "type": "file",
+          "name": "cli.py"
+        },
+        {
+          "type": "file",
+          "name": "dependency_graph.py"
+        },
+        {
+          "type": "file",
+          "name": "file_summary.py"
+        },
+        {
+          "type": "file",
+          "name": "stdlib_classification.py"
+        },
+        {
+          "type": "file",
+          "name": "tree_report.py"
+        }
+      ]
+    },
+    {
+      "type": "directory",
+      "name": "repo_analyzer.egg-info",
+      "children": [
+        {
+          "type": "file",
+          "name": "dependency_links.txt"
+        },
+        {
+          "type": "file",
+          "name": "entry_points.txt"
+        },
+        {
+          "type": "file",
+          "name": "PKG-INFO"
+        },
+        {
+          "type": "file",
+          "name": "requires.txt"
+        },
+        {
+          "type": "file",
+          "name": "SOURCES.txt"
+        },
+        {
+          "type": "file",
+          "name": "top_level.txt"
+        }
+      ]
+    },
+    {
+      "type": "directory",
+      "name": "self-analysis",
+      "children": [
+        {
+          "type": "file",
+          "name": "SUMMARY.md"
+        }
+      ]
+    },
+    {
+      "type": "directory",
+      "name": "tests",
+      "children": [
+        {
+          "type": "file",
+          "name": "test_dependency_graph.py"
+        },
+        {
+          "type": "file",
+          "name": "test_file_summary.py"
+        },
+        {
+          "type": "file",
+          "name": "test_stdlib_classification.py"
+        },
+        {
+          "type": "file",
+          "name": "test_tree_report.py"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": ".gitignore"
+    },
+    {
+      "type": "file",
+      "name": "LICENSE"
+    },
+    {
+      "type": "file",
+      "name": "pyproject.toml"
+    },
+    {
+      "type": "file",
+      "name": "README.md"
+    },
+    {
+      "type": "file",
+      "name": "repo-analyzer.config.json"
+    }
+  ]
+}
