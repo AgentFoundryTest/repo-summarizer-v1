@@ -25,9 +25,9 @@
       "summary": "Python command-line interface (role: cli)",
       "summary_text": "Python command-line interface (role: cli)",
       "metrics": {
-        "size_bytes": 14171,
-        "loc": 297,
-        "todo_count": 0
+        "size_bytes": 17546,
+        "loc": 346,
+        "todo_count": 4
       }
     },
     {

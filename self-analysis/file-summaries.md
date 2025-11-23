@@ -20,9 +20,9 @@ Total files: 10
 **Role:** cli  
 **Role Justification:** CLI-related name 'cli'  
 **Summary:** Python command-line interface (role: cli)  
-**Size:** 13.84 KB  
-**LOC:** 297  
-**TODOs/FIXMEs:** 0  
+**Size:** 17.13 KB  
+**LOC:** 346  
+**TODOs/FIXMEs:** 4  
 
 ## repo_analyzer/dependency_graph.py
 **Language:** Python  

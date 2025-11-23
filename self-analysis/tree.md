@@ -3,7 +3,6 @@
 ├── .pytest_cache
   ├── v
     └── cache
-      ├── lastfailed
       └── nodeids
   ├── .gitignore
   ├── CACHEDIR.TAG
@@ -23,14 +22,22 @@
   ├── SOURCES.txt
   └── top_level.txt
 ├── self-analysis
-  └── SUMMARY.md
+  ├── dependencies.json
+  ├── dependencies.md
+  ├── file-summaries.json
+  ├── file-summaries.md
+  ├── SUMMARY.md
+  ├── tree.json
+  └── tree.md
 ├── tests
   ├── test_dependency_graph.py
   ├── test_file_summary.py
   ├── test_stdlib_classification.py
   └── test_tree_report.py
 ├── .gitignore
+├── CHANGELOG.md
 ├── LICENSE
 ├── pyproject.toml
 ├── README.md
+├── repo-analyzer.config.example.jsonc
 └── repo-analyzer.config.json

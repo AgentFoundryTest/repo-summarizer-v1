@@ -16,10 +16,6 @@
               "children": [
                 {
                   "type": "file",
-                  "name": "lastfailed"
-                },
-                {
-                  "type": "file",
                   "name": "nodeids"
                 }
               ]
@@ -106,7 +102,31 @@
       "children": [
         {
           "type": "file",
+          "name": "dependencies.json"
+        },
+        {
+          "type": "file",
+          "name": "dependencies.md"
+        },
+        {
+          "type": "file",
+          "name": "file-summaries.json"
+        },
+        {
+          "type": "file",
+          "name": "file-summaries.md"
+        },
+        {
+          "type": "file",
           "name": "SUMMARY.md"
+        },
+        {
+          "type": "file",
+          "name": "tree.json"
+        },
+        {
+          "type": "file",
+          "name": "tree.md"
         }
       ]
     },
@@ -138,6 +158,10 @@
     },
     {
       "type": "file",
+      "name": "CHANGELOG.md"
+    },
+    {
+      "type": "file",
       "name": "LICENSE"
     },
     {
@@ -147,6 +171,10 @@
     {
       "type": "file",
       "name": "README.md"
+    },
+    {
+      "type": "file",
+      "name": "repo-analyzer.config.example.jsonc"
     },
     {
       "type": "file",
