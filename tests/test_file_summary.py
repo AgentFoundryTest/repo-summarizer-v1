@@ -1327,6 +1327,73 @@ export const helper = () => {};
         assert "export helper" in exports
         assert len(exports) == 2
     
+    def test_parse_js_no_double_count_default_exports(self):
+        """Test that default exports are not double-counted as named exports."""
+        from repo_analyzer.file_summary import _parse_js_ts_exports
+        
+        # Named default function should only appear once
+        content = "export default function Foo() {}"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default Foo" in exports
+        assert "export Foo" not in exports  # Should NOT be double-counted
+        assert len(exports) == 1
+        
+        # Named default class should only appear once
+        content = "export default class Bar {}"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default Bar" in exports
+        assert "export Bar" not in exports  # Should NOT be double-counted
+        assert len(exports) == 1
+        
+        # Mixed: default function + named const
+        content = """
+export default function Main() {}
+export const helper = () => {};
+"""
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default Main" in exports
+        assert "export helper" in exports
+        # Main should NOT appear as both default and named
+        assert "export Main" not in exports
+        assert len(exports) == 2
+    
+    def test_parse_js_default_without_semicolon(self):
+        """Test that default identifier exports work without semicolons."""
+        from repo_analyzer.file_summary import _parse_js_ts_exports
+        
+        # Without semicolon
+        content = "export default MyComponent"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default MyComponent" in exports
+        assert len(exports) == 1
+        
+        # With semicolon (should still work)
+        content = "export default MyComponent;"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default MyComponent" in exports
+        assert len(exports) == 1
+        
+        # Common patterns without semicolons
+        content = """
+const Component = () => {}
+export default Component
+"""
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export default Component" in exports
+        assert len(exports) == 1
+        
+        # Multiple exports, some without semicolons
+        content = """
+export const API_URL = "https://api.com"
+export default config
+export const helper = () => {}
+"""
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export API_URL" in exports
+        assert "export default config" in exports
+        assert "export helper" in exports
+        assert len(exports) == 3
+    
     def test_structured_summary_with_python_code(self, tmp_path):
         """Test structured summary with actual Python code."""
         from repo_analyzer.file_summary import _create_structured_summary

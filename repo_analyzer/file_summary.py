@@ -169,16 +169,19 @@ def _parse_js_ts_exports(content: str) -> Tuple[List[str], Optional[str]]:
         re.MULTILINE
     )
     
-    # Pattern for: export default Identifier; (e.g., export default MyComponent;)
+    # Pattern for: export default Identifier (with optional semicolon)
+    # Captures: export default MyComponent; or export default MyComponent
+    # Use negative lookahead to avoid matching keywords (function, class, etc.)
     default_identifier_pattern = re.compile(
-        r'export\s+default\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*;',
+        r'export\s+default\s+(?!(?:async|function|class|interface|type|const|let|var)\b)([a-zA-Z_$][a-zA-Z0-9_$]*)',
         re.MULTILINE
     )
     
     # Pattern for: export function name() or export const name = or export class Name
     # Also handles TypeScript: export interface Name, export type Name
+    # Use negative lookbehind to avoid matching "export default function/class Name"
     export_pattern = re.compile(
-        r'export\s+(?:async\s+)?(?:function|const|let|var|class|interface|type)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)',
+        r'export\s+(?!default\s)(?:async\s+)?(?:function|const|let|var|class|interface|type)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)',
         re.MULTILINE
     )
     
