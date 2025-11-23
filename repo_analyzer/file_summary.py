@@ -16,7 +16,6 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Set, Literal, Tuple
-import warnings
 
 # Schema version for structured summaries
 SCHEMA_VERSION = "2.0"
@@ -156,7 +155,6 @@ def _parse_js_ts_exports(content: str) -> Tuple[List[str], Optional[str]]:
         Tuple of (list of export declarations, warning message if any)
     """
     exports = []
-    warnings_list = []
     
     # Pattern for: export function name() or export const name = or export class Name
     export_pattern = re.compile(
@@ -353,10 +351,6 @@ def _detect_file_role(file_path: Path, root_path: Path) -> Tuple[str, str]:
     
     # Default to "implementation"
     return "implementation", "general implementation file (default classification)"
-    if extension in ['.json', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf']:
-        return "configuration"
-    
-    # CLI files
 
 
 def _generate_heuristic_summary(file_path: Path, root_path: Path) -> str:
