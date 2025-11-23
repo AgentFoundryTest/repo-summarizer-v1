@@ -179,21 +179,28 @@ def _parse_js_ts_exports(content: str) -> Tuple[List[str], Optional[str]]:
         exports.append(f"export {name}")
     
     # Find default export
-    if default_export_pattern.search(content):
+    has_default = default_export_pattern.search(content)
+    if has_default:
         exports.append("export default")
     
     # Find export lists - build set of existing names for efficient lookup
-    existing_names = {e.split()[-1] for e in exports}
+    # Extract just the name part from exports (skip "export default" pattern)
+    existing_names = {e.split()[1] for e in exports if len(e.split()) > 1 and e.split()[1] != 'default'}
+    if has_default:
+        existing_names.add('default')
     
     for match in export_list_pattern.finditer(content):
         export_list = match.group(1)
         # Split by comma and clean up
         for item in export_list.split(','):
             stripped = item.strip()
+            if not stripped:
+                continue
             # Handle "name as alias" exports - take first part
             parts = stripped.split()
             if parts:
                 name = parts[0]
+                # Ensure name is valid identifier and not already exported
                 if name and name not in existing_names:
                     exports.append(f"export {name}")
                     existing_names.add(name)
