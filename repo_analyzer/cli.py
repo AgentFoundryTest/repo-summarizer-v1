@@ -323,13 +323,19 @@ def run_scan(config: Dict[str, Any]) -> int:
                 # Simple directory name like "node_modules", "__pycache__"
                 exclude_dirs.add(pattern)
         
+        # Get detail level and legacy summary options with safe defaults
+        detail_level = file_summary_config.get('detail_level', 'standard')
+        include_legacy_summary = file_summary_config.get('include_legacy_summary', True)
+        
         generate_file_summaries(
             root_path=repo_root,
             output_dir=output_dir,
             include_patterns=include_patterns,
             exclude_patterns=all_exclude_patterns,
             exclude_dirs=exclude_dirs,
-            dry_run=dry_run
+            dry_run=dry_run,
+            detail_level=detail_level,
+            include_legacy_summary=include_legacy_summary
         )
         
         # Generate dependency graph

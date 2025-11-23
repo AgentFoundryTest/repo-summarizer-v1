@@ -15,6 +15,9 @@ from repo_analyzer.file_summary import (
     _get_language,
     _generate_heuristic_summary,
     _matches_pattern,
+    _detect_file_role,
+    _create_structured_summary,
+    SCHEMA_VERSION,
 )
 
 
@@ -748,4 +751,307 @@ class TestGenerateFileSummaries:
         # Verify file-summaries.md and file-summaries.json exist in output
         assert (output / 'file-summaries.md').exists()
         assert (output / 'file-summaries.json').exists()
+
+
+class TestStructuredSummarySchema:
+    """Tests for structured summary schema (v2.0)."""
+    
+    def test_structured_summary_fields(self, tmp_path):
+        """Test that structured summaries include all required fields."""
+        from repo_analyzer.file_summary import _create_structured_summary, SCHEMA_VERSION
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        file_path = source / 'main.py'
+        file_path.write_text('# main module')
+        
+        summary = _create_structured_summary(file_path, source, detail_level='standard', include_legacy=True)
+        
+        # Required fields
+        assert 'schema_version' in summary
+        assert summary['schema_version'] == SCHEMA_VERSION
+        assert 'path' in summary
+        assert summary['path'] == 'main.py'
+        assert 'language' in summary
+        assert summary['language'] == 'Python'
+        assert 'role' in summary
+        assert summary['role'] == 'entry-point'
+        
+        # Legacy compatibility fields
+        assert 'summary' in summary
+        assert 'summary_text' in summary
+        assert summary['summary'] == summary['summary_text']
+        
+        # Standard detail level includes metrics
+        assert 'metrics' in summary
+        assert 'size_bytes' in summary['metrics']
+    
+    def test_role_detection(self, tmp_path):
+        """Test file role detection."""
+        from repo_analyzer.file_summary import _detect_file_role
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Test different file roles
+        test_cases = [
+            ('test_main.py', 'test'),
+            ('main.py', 'entry-point'),
+            ('config.json', 'configuration'),
+            ('cli.py', 'cli'),
+            ('utils.py', 'utility'),
+            ('model.py', 'model'),
+            ('controller.py', 'controller'),
+            ('service.py', 'service'),
+            ('router.py', 'router'),
+            ('middleware.py', 'middleware'),
+            ('Button.tsx', 'component'),
+            ('__init__.py', 'module-init'),
+            ('README.md', 'documentation'),
+            ('custom_module.py', 'implementation'),
+            # Edge cases: should NOT be classified as test
+            ('testament.py', 'implementation'),  # Starts with "test" but not a test file
+            ('testing.py', 'implementation'),  # Starts with "test" but not a test file
+            ('test.py', 'test'),  # Exact match "test" should be classified as test
+        ]
+        
+        for filename, expected_role in test_cases:
+            file_path = source / filename
+            file_path.touch()
+            role = _detect_file_role(file_path, source)
+            assert role == expected_role, f"Expected {expected_role} for {filename}, got {role}"
+    
+    def test_detail_level_minimal(self, tmp_path):
+        """Test minimal detail level."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        file_path = source / 'test.py'
+        file_path.write_text('# test')
+        
+        summary = _create_structured_summary(file_path, source, detail_level='minimal', include_legacy=True)
+        
+        # Minimal should have basic fields
+        assert 'schema_version' in summary
+        assert 'path' in summary
+        assert 'language' in summary
+        assert 'role' in summary
+        assert 'summary' in summary
+        
+        # Minimal should not have metrics
+        assert 'metrics' not in summary
+        assert 'structure' not in summary
+        assert 'dependencies' not in summary
+    
+    def test_detail_level_standard(self, tmp_path):
+        """Test standard detail level."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        file_path = source / 'test.py'
+        file_path.write_text('# test')
+        
+        summary = _create_structured_summary(file_path, source, detail_level='standard', include_legacy=True)
+        
+        # Standard should have basic fields and metrics
+        assert 'schema_version' in summary
+        assert 'path' in summary
+        assert 'language' in summary
+        assert 'role' in summary
+        assert 'summary' in summary
+        assert 'metrics' in summary
+        assert 'size_bytes' in summary['metrics']
+        
+        # Standard should not have structure or dependencies
+        assert 'structure' not in summary
+        assert 'dependencies' not in summary
+    
+    def test_detail_level_detailed(self, tmp_path):
+        """Test detailed detail level."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        file_path = source / 'test.py'
+        file_path.write_text('# test')
+        
+        summary = _create_structured_summary(file_path, source, detail_level='detailed', include_legacy=True)
+        
+        # Detailed should have all fields
+        assert 'schema_version' in summary
+        assert 'path' in summary
+        assert 'language' in summary
+        assert 'role' in summary
+        assert 'summary' in summary
+        assert 'metrics' in summary
+        assert 'structure' in summary
+        assert 'dependencies' in summary
+        
+        # Verify structure and dependencies have expected keys
+        assert 'declarations' in summary['structure']
+        assert 'imports' in summary['dependencies']
+        assert 'exports' in summary['dependencies']
+    
+    def test_legacy_summary_disabled(self, tmp_path):
+        """Test disabling legacy summary field."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        file_path = source / 'test.py'
+        file_path.write_text('# test')
+        
+        summary = _create_structured_summary(file_path, source, detail_level='standard', include_legacy=False)
+        
+        # Should not have legacy fields
+        assert 'summary' not in summary
+        assert 'summary_text' not in summary
+        
+        # Should still have other required fields
+        assert 'schema_version' in summary
+        assert 'path' in summary
+        assert 'language' in summary
+        assert 'role' in summary
+    
+    def test_generate_with_detail_levels(self, tmp_path):
+        """Test generate_file_summaries with different detail levels."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        (source / 'main.py').touch()
+        (source / 'test.py').touch()
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        # Test with detailed level
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            detail_level='detailed',
+            include_legacy_summary=True
+        )
+        
+        json_file = output / 'file-summaries.json'
+        assert json_file.exists()
+        data = json.loads(json_file.read_text())
+        
+        assert 'schema_version' in data
+        assert data['total_files'] == 2
+        
+        # Verify files have detailed structure
+        for entry in data['files']:
+            assert 'schema_version' in entry
+            assert 'metrics' in entry
+            assert 'structure' in entry
+            assert 'dependencies' in entry
+    
+    def test_json_key_ordering_deterministic(self, tmp_path):
+        """Test that JSON output has deterministic key ordering."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        (source / 'test.py').write_text('# test')
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            detail_level='standard'
+        )
+        
+        json_file = output / 'file-summaries.json'
+        content1 = json_file.read_text()
+        
+        # Generate again
+        json_file.unlink()
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            detail_level='standard'
+        )
+        
+        content2 = json_file.read_text()
+        
+        # Should be identical
+        assert content1 == content2
+        
+        # Verify key order in first file entry
+        data = json.loads(content1)
+        first_file = data['files'][0]
+        keys = list(first_file.keys())
+        
+        # Expected order
+        expected_order = ['schema_version', 'path', 'language', 'role', 'summary', 'summary_text', 'metrics']
+        assert keys == expected_order
+    
+    def test_backward_compatibility_with_old_parsers(self, tmp_path):
+        """Test that old parsers can still read new format."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        (source / 'main.py').touch()
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            detail_level='standard',
+            include_legacy_summary=True
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        # Old parsers would expect these fields
+        assert 'total_files' in data
+        assert 'files' in data
+        assert len(data['files']) > 0
+        
+        first_file = data['files'][0]
+        assert 'path' in first_file
+        assert 'language' in first_file
+        assert 'summary' in first_file
+        
+        # These would be new fields that old parsers can ignore
+        assert 'schema_version' in data
+        assert 'schema_version' in first_file
+        assert 'role' in first_file
+    
+    def test_markdown_includes_new_fields(self, tmp_path):
+        """Test that Markdown output includes new structured fields."""
+        source = tmp_path / 'source'
+        source.mkdir()
+        (source / 'cli.py').write_text('# CLI module\n' * 100)  # Make it have some size
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.py'],
+            detail_level='standard'
+        )
+        
+        md_file = output / 'file-summaries.md'
+        content = md_file.read_text()
+        
+        # Should include schema version
+        assert 'Schema Version: 2.0' in content
+        
+        # Should include role
+        assert '**Role:**' in content
+        assert 'cli' in content
+        
+        # Should include size from metrics
+        assert '**Size:**' in content
+        assert 'KB' in content
 
