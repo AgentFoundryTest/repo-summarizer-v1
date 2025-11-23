@@ -2,12 +2,16 @@
 
 A Python tool for analyzing repository structure, generating file summaries, and tracking dependencies. Designed for use in CI/CD pipelines with deterministic, non-interactive operation.
 
+**Current Version**: 0.2.0 ([Changelog](CHANGELOG.md))
+
 ## Features
 
+- **Structured file summaries**: Schema v2.0 with role classifications, metrics, and optional structure parsing
+- **External dependency tracking**: Automatic classification of stdlib vs third-party dependencies
 - **Non-interactive CLI**: Designed for automation and CI/CD integration
 - **Deterministic output**: Generates consistent reports in a configurable output directory
 - **Dry-run mode**: Preview actions without modifying the filesystem
-- **Flexible configuration**: Supports both config files and CLI arguments
+- **Flexible configuration**: Supports both config files and CLI arguments with multiple detail levels
 - **Safe path handling**: Prevents writes outside designated output directory
 
 ## Installation
@@ -48,6 +52,8 @@ repo-analyzer scan --config ./my-config.json
 Configuration can be provided via:
 1. Configuration file (default: `repo-analyzer.config.json`)
 2. Command-line arguments (takes precedence)
+
+For a fully commented configuration example, see [`repo-analyzer.config.example.jsonc`](repo-analyzer.config.example.jsonc).
 
 ### Configuration File Format
 

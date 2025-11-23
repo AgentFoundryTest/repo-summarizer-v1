@@ -1,0 +1,87 @@
+{
+  // Output directory for all generated reports (relative or absolute path)
+  // All analysis outputs will be written to this directory
+  "output_dir": "repo-analysis-output",
+
+  // Dry-run mode: if true, shows what would be done without writing files
+  // Useful for previewing analysis before committing to file generation
+  "dry_run": false,
+
+  // Directory tree generation configuration
+  "tree_config": {
+    // Maximum depth to traverse (null = unlimited)
+    // Set a number to limit tree depth: e.g., 3 for three levels deep
+    "max_depth": null,
+
+    // Patterns to exclude from tree traversal
+    // Supports exact matches and wildcards (*.ext)
+    // Common exclusions: build artifacts, dependencies, caches
+    "exclude_patterns": [
+      ".git",           // Git internal directory
+      "__pycache__",    // Python bytecode cache
+      "*.pyc",          // Python compiled files
+      "node_modules",   // Node.js dependencies
+      ".venv",          // Python virtual environment
+      "venv"            // Alternative Python virtual environment name
+    ]
+  },
+
+  // File summary generation configuration
+  "file_summary_config": {
+    // Maximum file size in KB for expensive parsing operations
+    // Files larger than this will skip declaration parsing but still report basic metrics
+    // Default: 1024 (1 MB)
+    "max_file_size_kb": 1024,
+
+    // File patterns to include in analysis (glob patterns)
+    // Only files matching these patterns will be analyzed
+    "include_patterns": [
+      "*.py",      // Python files
+      "*.js",      // JavaScript files
+      "*.ts",      // TypeScript files
+      "*.java",    // Java files
+      "*.go",      // Go files
+      "*.rs"       // Rust files
+    ],
+
+    // Detail level controls the amount of information in output
+    // Options:
+    //   "minimal"  - Basic fields: path, language, role, role_justification, summary
+    //   "standard" - Adds metrics: file size, LOC, TODO count (RECOMMENDED)
+    //   "detailed" - Adds structure parsing and external dependencies
+    //
+    // Recommendation: Use "standard" for most cases - it provides useful metrics
+    // without the overhead of full structure parsing. Use "detailed" when you need
+    // to analyze code structure or audit external dependencies.
+    "detail_level": "standard",
+
+    // Include legacy summary fields for backward compatibility with v1.0 consumers
+    // When true, includes both "summary" and "summary_text" fields
+    // When false, omits these fields for a cleaner v2.0-only format
+    // Default: true (ensures compatibility)
+    //
+    // Set to false only if:
+    // - You don't need v1.0 compatibility
+    // - You want minimal JSON output size
+    // - All consumers understand v2.0 schema
+    "include_legacy_summary": true
+  },
+
+  // Dependency analysis configuration
+  "dependency_config": {
+    // Enable scanning of package management files
+    // When true, looks for package files listed below
+    "scan_package_files": true,
+
+    // Package files to scan for external dependencies
+    // These files declare project dependencies in various ecosystems
+    "package_files": [
+      "package.json",      // Node.js/npm dependencies
+      "requirements.txt",  // Python pip dependencies
+      "Pipfile",          // Python pipenv dependencies
+      "pyproject.toml",   // Python modern dependencies (PEP 518)
+      "go.mod",           // Go module dependencies
+      "Cargo.toml"        // Rust cargo dependencies
+    ]
+  }
+}
