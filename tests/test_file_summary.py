@@ -1252,6 +1252,38 @@ export class UserService {}
         assert "export UserService" in exports
         assert len(exports) == 3
     
+    def test_parse_js_default_with_default_substring_in_names(self):
+        """Test that anonymous default exports work when other identifiers contain 'default'."""
+        from repo_analyzer.file_summary import _parse_js_ts_exports
+        
+        # Anonymous default + const with 'default' in name
+        content = "export const defaultValue = 1;\nexport default function () {}"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export defaultValue" in exports
+        assert "export default" in exports
+        assert len(exports) == 2
+        
+        # Multiple exports with 'default' substring
+        content = """
+export const defaultTheme = 'dark';
+export const defaultLocale = 'en';
+export default 42
+"""
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export defaultTheme" in exports
+        assert "export defaultLocale" in exports
+        assert "export default" in exports
+        assert len(exports) == 3
+        
+        # Named default should NOT add anonymous default even with 'default' in other names
+        content = "export const defaultValue = 1;\nexport default function Main() {}"
+        exports, warning = _parse_js_ts_exports(content)
+        assert "export defaultValue" in exports
+        assert "export default Main" in exports
+        # Should NOT have anonymous "export default"
+        assert "export default" not in exports
+        assert len(exports) == 2
+    
     def test_structured_summary_with_python_code(self, tmp_path):
         """Test structured summary with actual Python code."""
         from repo_analyzer.file_summary import _create_structured_summary

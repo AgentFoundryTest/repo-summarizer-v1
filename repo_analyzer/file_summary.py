@@ -193,8 +193,12 @@ def _parse_js_ts_exports(content: str) -> Tuple[List[str], Optional[str]]:
         exports.append(f"export {name}")
     
     # Check for anonymous default export (only if no named default found)
+    # Named default exports have the format "export default Name" (3 parts)
     has_default = default_export_pattern.search(content)
-    has_named_default = any('default' in e for e in exports)
+    has_named_default = any(
+        len(e.split()) == 3 and e.split()[0] == 'export' and e.split()[1] == 'default'
+        for e in exports
+    )
     if has_default and not has_named_default:
         exports.append("export default")
     
