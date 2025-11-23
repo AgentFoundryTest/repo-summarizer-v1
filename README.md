@@ -150,17 +150,61 @@ Each file entry includes the following fields (deterministic ordering):
 - `path`: Relative path from repository root (POSIX format)
 - `language`: Detected programming language (e.g., "Python", "JavaScript")
 - `role`: File purpose/role (see Role Types below)
+- `role_justification`: Explanation of why the file was assigned this role
 
 **Optional Fields (based on configuration):**
 - `summary`: Human-readable description (legacy field, included by default)
 - `summary_text`: Alias for `summary` (for enhanced compatibility)
 - `metrics`: Object containing file metrics (included at "standard" and "detailed" levels)
   - `size_bytes`: File size in bytes
+  - `loc`: Lines of code (non-empty, non-comment lines)
+  - `todo_count`: Number of TODO/FIXME comments found
+  - `declaration_count`: Number of top-level declarations (included at "detailed" level when parsing succeeds)
 - `structure`: Object with structural information (included at "detailed" level)
-  - `declarations`: List of top-level declarations (placeholder for future enhancement)
+  - `declarations`: List of top-level declarations (functions, classes, exports)
+  - `warning`: Optional warning message if parsing failed or was skipped
 - `dependencies`: Object with dependency information (included at "detailed" level)
   - `imports`: List of imported modules/packages (placeholder for future enhancement)
   - `exports`: List of exported symbols (placeholder for future enhancement)
+
+#### Language-Aware Parsing
+
+The tool uses static analysis to extract structure information from source files:
+
+**Python Files:**
+- Uses Python's built-in `ast` module for safe parsing
+- Extracts top-level functions, async functions, and classes
+- No code execution - completely static analysis
+- Gracefully handles syntax errors with warning messages
+
+**JavaScript/TypeScript Files:**
+- Uses deterministic regex patterns for lightweight parsing
+- Detects exported functions, classes, constants, and default exports
+- Handles both named and list-style exports
+- Best-effort approach that covers common patterns
+
+**All Files:**
+- LOC (Lines of Code): Counts non-empty, non-comment lines
+- TODO/FIXME Detection: Case-insensitive search for TODO and FIXME comments
+- Large File Handling: Skips expensive parsing for files >1024KB (configurable via `max_file_size_kb`)
+
+#### Role Detection Heuristics
+
+Files are automatically classified using deterministic rules based on:
+
+1. **Filename patterns**: e.g., `test_*.py`, `*_test.py`, `main.py`, `cli.py`
+2. **File extensions**: e.g., `.json`, `.yaml` → configuration
+3. **Directory location**: e.g., `tests/`, `docs/`, `scripts/`
+4. **Content-based hints**: Component extensions like `.jsx`, `.tsx`, `.vue`
+
+Each classification includes a `role_justification` field explaining the reasoning, such as:
+- "filename starts with 'test_'"
+- "common entry point name 'main'"
+- "configuration file extension '.json'"
+- "located in 'tests' directory"
+- "general implementation file (default classification)"
+
+This explainability helps users understand and trust automated classifications.
 
 #### Role Types
 
@@ -194,19 +238,20 @@ Control the output format via `file_summary_config` in your configuration file:
 {
   "file_summary_config": {
     "detail_level": "standard",
-    "include_legacy_summary": true
+    "include_legacy_summary": true,
+    "max_file_size_kb": 1024
   }
 }
 ```
 
 **Detail Levels:**
-- `minimal`: Basic fields only (schema_version, path, language, role, summary)
-- `standard`: Basic fields + metrics (default, recommended)
-- `detailed`: All fields including structure and dependencies placeholders
+- `minimal`: Basic fields only (schema_version, path, language, role, role_justification, summary)
+- `standard`: Basic fields + metrics (size, LOC, TODO count) - **default, recommended**
+- `detailed`: All fields including structure with parsed declarations and declaration counts
 
-**Backward Compatibility:**
+**Advanced Options:**
 - `include_legacy_summary`: When `true` (default), includes `summary` and `summary_text` fields for compatibility with tools expecting v1.0 format
-- Setting to `false` produces a cleaner output without legacy fields
+- `max_file_size_kb`: Maximum file size in KB for expensive parsing operations (default: 1024). Larger files skip declaration parsing but still report basic metrics.
 
 #### Example Output
 
@@ -221,10 +266,13 @@ Control the output format via `file_summary_config` in your configuration file:
       "path": "src/main.py",
       "language": "Python",
       "role": "entry-point",
-      "summary": "Python main entry point",
-      "summary_text": "Python main entry point",
+      "role_justification": "common entry point name 'main'",
+      "summary": "Python main entry point (role: entry-point)",
+      "summary_text": "Python main entry point (role: entry-point)",
       "metrics": {
-        "size_bytes": 1024
+        "size_bytes": 1024,
+        "loc": 45,
+        "todo_count": 2
       }
     },
     {
@@ -232,13 +280,48 @@ Control the output format via `file_summary_config` in your configuration file:
       "path": "tests/test_main.py",
       "language": "Python",
       "role": "test",
-      "summary": "Python test file",
-      "summary_text": "Python test file",
+      "role_justification": "filename starts with 'test_'",
+      "summary": "Python test file (role: test)",
+      "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 512
+        "size_bytes": 512,
+        "loc": 30,
+        "todo_count": 0
       }
     }
   ]
+}
+```
+
+**Detailed Detail Level:**
+```json
+{
+  "schema_version": "2.0",
+  "path": "src/api.py",
+  "language": "Python",
+  "role": "api",
+  "role_justification": "filename contains 'api'",
+  "summary": "Python API implementation (role: api)",
+  "summary_text": "Python API implementation (role: api)",
+  "metrics": {
+    "size_bytes": 2048,
+    "loc": 85,
+    "todo_count": 3,
+    "declaration_count": 5
+  },
+  "structure": {
+    "declarations": [
+      "class APIClient",
+      "function get_user",
+      "function create_user",
+      "function update_user",
+      "async function delete_user"
+    ]
+  },
+  "dependencies": {
+    "imports": [],
+    "exports": []
+  }
 }
 ```
 
@@ -248,19 +331,27 @@ Control the output format via `file_summary_config` in your configuration file:
 The new schema is backward compatible by default. Your existing JSON parsers will continue to work because:
 1. The `total_files` and `files` fields remain at the top level
 2. Each file entry still has `path`, `language`, and `summary` fields
-3. New fields (like `role`, `metrics`) can be safely ignored by v1.0 parsers
+3. New fields (like `role`, `role_justification`, `metrics`) can be safely ignored by v1.0 parsers
 
 **Upgrading to v2.0:**
 To take advantage of new features:
 1. Check for `schema_version` field to detect format version
-2. Use `role` field for intelligent filtering and categorization
-3. Access `metrics.size_bytes` for file size information
-4. Future versions may populate `structure` and `dependencies` with rich data
+2. Use `role` and `role_justification` fields for intelligent filtering and understanding file purposes
+3. Access `metrics.size_bytes`, `metrics.loc`, and `metrics.todo_count` for file analysis
+4. At "detailed" level, use `structure.declarations` to see top-level code structure
+5. Check `structure.warning` for any parsing issues that occurred
 
 **Handling missing fields:**
 - Always check for field existence before accessing
 - For configs lacking `detail_level`, the default is "standard"
 - For configs lacking `include_legacy_summary`, the default is `true`
+- For configs lacking `max_file_size_kb`, the default is `1024`
+
+**Error Handling and Edge Cases:**
+- **Syntax errors**: Files with invalid syntax will have an empty `declarations` array and a `warning` in the `structure` field
+- **Large files**: Files exceeding `max_file_size_kb` will skip declaration parsing but still report basic metrics
+- **Unknown languages**: Files in unsupported languages will have basic metrics but no declarations
+- **Files without extensions**: Will be classified as "Unknown" language with role based on filename/path
 
 ## Development Status
 
@@ -271,7 +362,11 @@ Current implementation includes:
 - ✅ Dry-run mode
 - ✅ Summary document generation
 - ✅ Tree generator (Markdown + JSON)
-- ✅ File summary generator with structured schema v2.0 (Markdown + JSON, heuristic/path-based)
+- ✅ File summary generator with structured schema v2.0 (Markdown + JSON)
+  - ✅ Language-aware structure parsing (Python AST, JS/TS exports)
+  - ✅ LOC and TODO/FIXME counting
+  - ✅ Role inference with justifications
+  - ✅ Graceful error handling for syntax errors
 - ✅ Dependency scanner (Markdown + JSON, Python + JS/TS imports)
 
 ## Error Handling
