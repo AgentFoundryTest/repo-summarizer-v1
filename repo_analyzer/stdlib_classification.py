@@ -41,7 +41,7 @@ PYTHON_STDLIB = {
     'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile',
     'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter',
     'token', 'tokenize', 'tomllib', 'trace', 'traceback', 'tracemalloc', 'tty',
-    'turtle', 'turtledemo', 'types', 'typing', 'typing_extensions', 'unicodedata',
+    'turtle', 'turtledemo', 'types', 'typing', 'unicodedata',
     'unittest', 'urllib', 'uu', 'uuid', 'venv', 'warnings', 'wave', 'weakref',
     'webbrowser', 'winreg', 'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpc',
     'zipapp', 'zipfile', 'zipimport', 'zlib', 'zoneinfo',
