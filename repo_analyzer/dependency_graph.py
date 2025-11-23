@@ -3,6 +3,7 @@ Repository dependency graph generator.
 
 Analyzes import statements in Python and JavaScript/TypeScript files to build
 an intra-repository dependency graph, producing both JSON and Markdown outputs.
+Also captures and classifies external dependencies (stdlib vs third-party).
 """
 
 import json
@@ -10,6 +11,7 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional, Any
+from repo_analyzer.stdlib_classification import classify_import
 
 
 class DependencyGraphError(Exception):
@@ -498,7 +500,35 @@ def _scan_file_dependencies(
     Raises:
         IOError/OSError: If the file cannot be read
     """
+    dependencies, _ = _scan_file_dependencies_with_external(file_path, repo_root)
+    return dependencies
+
+
+def _scan_file_dependencies_with_external(
+    file_path: Path,
+    repo_root: Path
+) -> Tuple[List[Path], Dict[str, List[str]]]:
+    """
+    Scan a single file for dependencies and resolve them to file paths.
+    Also categorize external (non-repo) imports as stdlib or third-party.
+    
+    Args:
+        file_path: Path to the file to scan
+        repo_root: Repository root directory
+    
+    Returns:
+        Tuple of (resolved_dependencies, external_dependencies) where:
+        - resolved_dependencies: List of resolved dependency file paths within the repo
+        - external_dependencies: Dict with keys 'stdlib' and 'third-party', values are lists of module names
+        
+    Raises:
+        IOError/OSError: If the file cannot be read
+    """
     dependencies = []
+    external_deps: Dict[str, List[str]] = {
+        'stdlib': [],
+        'third-party': []
+    }
     
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -509,22 +539,55 @@ def _scan_file_dependencies(
     
     # Determine file type and parse accordingly
     suffix = file_path.suffix.lower()
+    language = None
     
     if suffix == '.py':
+        language = 'Python'
         imports = _parse_python_imports(content, file_path)
         for import_path in imports:
             resolved = _resolve_python_import(import_path, file_path, repo_root)
             if resolved:
+                # This is an intra-repo dependency
                 dependencies.append(resolved)
+            else:
+                # This is an external dependency - classify it
+                # Skip relative imports (they failed to resolve, but are internal references)
+                if not import_path.startswith('.'):
+                    dep_type = classify_import(import_path, language)
+                    if dep_type == 'stdlib':
+                        # Only add if not already present
+                        if import_path not in external_deps['stdlib']:
+                            external_deps['stdlib'].append(import_path)
+                    elif dep_type == 'third-party':
+                        if import_path not in external_deps['third-party']:
+                            external_deps['third-party'].append(import_path)
     
     elif suffix in ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs']:
+        # Determine language more precisely
+        if suffix in ['.ts', '.tsx']:
+            language = 'TypeScript'
+        else:
+            language = 'JavaScript'
+        
         imports = _parse_js_imports(content, file_path)
         for import_path in imports:
             resolved = _resolve_js_import(import_path, file_path, repo_root)
             if resolved:
+                # This is an intra-repo dependency
                 dependencies.append(resolved)
+            else:
+                # This is an external dependency - classify it
+                # Skip relative/absolute imports (they failed to resolve, but are file paths)
+                if not import_path.startswith('.') and not import_path.startswith('/'):
+                    dep_type = classify_import(import_path, language)
+                    if dep_type == 'stdlib':
+                        if import_path not in external_deps['stdlib']:
+                            external_deps['stdlib'].append(import_path)
+                    elif dep_type == 'third-party':
+                        if import_path not in external_deps['third-party']:
+                            external_deps['third-party'].append(import_path)
     
-    return dependencies
+    return dependencies, external_deps
 
 
 def build_dependency_graph(
@@ -543,10 +606,10 @@ def build_dependency_graph(
         exclude_dirs: Set of directory names to skip
     
     Returns:
-        Tuple of (graph_data, errors) where graph_data contains nodes and edges,
-        and errors is a list of error messages
+        Tuple of (graph_data, errors) where graph_data contains nodes, edges,
+        and external dependencies, and errors is a list of error messages
     """
-    from repo_analyzer.file_summary import scan_files
+    from repo_analyzer.file_summary import scan_files, _get_language
     
     errors = []
     
@@ -561,6 +624,8 @@ def build_dependency_graph(
     
     # Build dependency map - normalize all file paths to absolute
     dependency_map: Dict[Path, List[Path]] = {}
+    # Track external dependencies per file
+    external_deps_map: Dict[Path, Dict[str, List[str]]] = {}
     # Normalize all files to absolute paths for consistent comparisons
     all_files: Set[Path] = {f.resolve() for f in files}
     
@@ -568,8 +633,9 @@ def build_dependency_graph(
         try:
             # Normalize file_path to absolute
             file_path_abs = file_path.resolve()
-            deps = _scan_file_dependencies(file_path_abs, root_path)
+            deps, external_deps = _scan_file_dependencies_with_external(file_path_abs, root_path)
             dependency_map[file_path_abs] = deps
+            external_deps_map[file_path_abs] = external_deps
         except Exception as e:
             try:
                 rel = file_path.relative_to(root_path)
@@ -577,10 +643,15 @@ def build_dependency_graph(
                 rel = file_path
             errors.append(f"Error scanning {rel}: {e}")
             dependency_map[file_path.resolve()] = []
+            external_deps_map[file_path.resolve()] = {'stdlib': [], 'third-party': []}
     
     # Build graph structure
     nodes = []
     edges = []
+    
+    # Aggregate external dependencies for summary
+    all_stdlib_deps: Set[str] = set()
+    all_third_party_deps: Set[str] = set()
     
     for file_path in sorted(all_files):
         try:
@@ -588,11 +659,24 @@ def build_dependency_graph(
         except ValueError:
             rel_path = str(file_path)
         
-        nodes.append({
+        # Get external dependencies for this file
+        ext_deps = external_deps_map.get(file_path, {'stdlib': [], 'third-party': []})
+        
+        # Aggregate for summary stats
+        all_stdlib_deps.update(ext_deps['stdlib'])
+        all_third_party_deps.update(ext_deps['third-party'])
+        
+        # Add node with external dependency info
+        node = {
             'id': rel_path,
             'path': rel_path,
-            'type': 'file'
-        })
+            'type': 'file',
+            'external_dependencies': {
+                'stdlib': sorted(ext_deps['stdlib']),
+                'third-party': sorted(ext_deps['third-party'])
+            }
+        }
+        nodes.append(node)
     
     # Create edges (deduplicate by source-target pair)
     edge_set = set()  # Track unique (source, target) pairs
@@ -620,7 +704,13 @@ def build_dependency_graph(
     
     graph_data = {
         'nodes': nodes,
-        'edges': edges
+        'edges': edges,
+        'external_dependencies_summary': {
+            'stdlib': sorted(list(all_stdlib_deps)),
+            'third-party': sorted(list(all_third_party_deps)),
+            'stdlib_count': len(all_stdlib_deps),
+            'third-party_count': len(all_third_party_deps)
+        }
     }
     
     return graph_data, errors
@@ -671,11 +761,45 @@ def generate_dependency_report(
         # Generate Markdown output
         markdown_lines = ["# Dependency Graph\n"]
         markdown_lines.append("Intra-repository dependency analysis for Python and JavaScript/TypeScript files.\n")
+        markdown_lines.append("Includes classification of external dependencies as stdlib vs third-party.\n")
         
         # Statistics
         markdown_lines.append("## Statistics\n")
         markdown_lines.append(f"- **Total files**: {len(graph_data['nodes'])}")
-        markdown_lines.append(f"- **Total dependencies**: {len(graph_data['edges'])}\n")
+        markdown_lines.append(f"- **Intra-repo dependencies**: {len(graph_data['edges'])}")
+        
+        # External dependencies summary
+        ext_summary = graph_data.get('external_dependencies_summary', {})
+        if ext_summary:
+            markdown_lines.append(f"- **External stdlib dependencies**: {ext_summary.get('stdlib_count', 0)}")
+            markdown_lines.append(f"- **External third-party dependencies**: {ext_summary.get('third-party_count', 0)}")
+        markdown_lines.append("")
+        
+        # External dependencies section
+        if ext_summary:
+            markdown_lines.append("## External Dependencies\n")
+            
+            stdlib_deps = ext_summary.get('stdlib', [])
+            if stdlib_deps:
+                markdown_lines.append("### Standard Library / Core Modules\n")
+                markdown_lines.append(f"Total: {len(stdlib_deps)} unique modules\n")
+                # Show first 20 in markdown, note if more
+                for dep in stdlib_deps[:20]:
+                    markdown_lines.append(f"- `{dep}`")
+                if len(stdlib_deps) > 20:
+                    markdown_lines.append(f"- ... and {len(stdlib_deps) - 20} more (see JSON for full list)")
+                markdown_lines.append("")
+            
+            third_party_deps = ext_summary.get('third-party', [])
+            if third_party_deps:
+                markdown_lines.append("### Third-Party Packages\n")
+                markdown_lines.append(f"Total: {len(third_party_deps)} unique packages\n")
+                # Show first 20 in markdown, note if more
+                for dep in third_party_deps[:20]:
+                    markdown_lines.append(f"- `{dep}`")
+                if len(third_party_deps) > 20:
+                    markdown_lines.append(f"- ... and {len(third_party_deps) - 20} more (see JSON for full list)")
+                markdown_lines.append("")
         
         # Calculate some interesting metrics
         dependents_count: Dict[str, int] = {}
@@ -690,7 +814,7 @@ def generate_dependency_report(
         
         # Most depended upon files
         if dependents_count:
-            markdown_lines.append("## Most Depended Upon Files\n")
+            markdown_lines.append("## Most Depended Upon Files (Intra-Repo)\n")
             sorted_dependents = sorted(
                 dependents_count.items(),
                 key=lambda x: x[1],
@@ -703,7 +827,7 @@ def generate_dependency_report(
         
         # Files with most dependencies
         if dependencies_count:
-            markdown_lines.append("## Files with Most Dependencies\n")
+            markdown_lines.append("## Files with Most Dependencies (Intra-Repo)\n")
             sorted_dependencies = sorted(
                 dependencies_count.items(),
                 key=lambda x: x[1],

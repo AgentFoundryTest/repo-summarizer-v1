@@ -868,7 +868,10 @@ class TestGenerateDependencyReport:
         content = md_file.read_text()
         assert "Dependency Graph" in content
         assert "Total files" in content
-        assert "Total dependencies" in content
+        assert "Intra-repo dependencies" in content  # Changed from "Total dependencies"
+        # Check for new external dependency sections
+        assert "External stdlib dependencies" in content
+        assert "External third-party dependencies" in content
     
     def test_statistics_in_markdown(self, tmp_path):
         """Test that Markdown includes statistics."""
@@ -898,7 +901,7 @@ from . import config
         # Should have statistics
         assert "Statistics" in content
         assert "**Total files**: 3" in content
-        assert "**Total dependencies**: 2" in content
+        assert "**Intra-repo dependencies**: 2" in content  # Changed from "Total dependencies"
         
         # Should list most depended upon files
         assert "Most Depended Upon Files" in content
@@ -989,14 +992,13 @@ from . import config
         output = tmp_path / "output"
         output.mkdir()
         
-        # Mock _scan_file_dependencies to raise an exception
+        # Mock _scan_file_dependencies_with_external to raise an exception
         from repo_analyzer import dependency_graph
-        original_scan = dependency_graph._scan_file_dependencies
         
         def mock_scan_with_error(file_path, repo_root):
             raise IOError("Simulated file read error")
         
-        monkeypatch.setattr(dependency_graph, "_scan_file_dependencies", mock_scan_with_error)
+        monkeypatch.setattr(dependency_graph, "_scan_file_dependencies_with_external", mock_scan_with_error)
         
         # Should raise DependencyGraphError due to scan errors
         with pytest.raises(DependencyGraphError, match="Dependency graph generation failed"):
@@ -1005,3 +1007,331 @@ from . import config
                 output,
                 include_patterns=['*.py']
             )
+
+
+class TestExternalDependencies:
+    """Tests for external dependency tracking and classification."""
+    
+    def test_python_stdlib_dependencies(self, tmp_path):
+        """Test detection of Python stdlib dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.py"
+        main.write_text("""
+import os
+import sys
+import json
+from pathlib import Path
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Check external dependencies summary
+        assert 'external_dependencies_summary' in data
+        stdlib_deps = data['external_dependencies_summary']['stdlib']
+        assert 'os' in stdlib_deps
+        assert 'sys' in stdlib_deps
+        assert 'json' in stdlib_deps
+        assert 'pathlib.Path' in stdlib_deps
+        
+        # Check per-file dependencies
+        main_node = next(n for n in data['nodes'] if n['path'] == 'main.py')
+        assert 'external_dependencies' in main_node
+        assert 'os' in main_node['external_dependencies']['stdlib']
+        assert 'sys' in main_node['external_dependencies']['stdlib']
+    
+    def test_python_third_party_dependencies(self, tmp_path):
+        """Test detection of Python third-party dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.py"
+        main.write_text("""
+import requests
+import numpy as np
+from django.http import HttpResponse
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Check external dependencies summary
+        third_party_deps = data['external_dependencies_summary']['third-party']
+        assert 'requests' in third_party_deps
+        assert 'numpy' in third_party_deps
+        assert 'django.http.HttpResponse' in third_party_deps
+        
+        # Check per-file dependencies
+        main_node = next(n for n in data['nodes'] if n['path'] == 'main.py')
+        assert 'requests' in main_node['external_dependencies']['third-party']
+        assert 'numpy' in main_node['external_dependencies']['third-party']
+    
+    def test_js_node_core_modules(self, tmp_path):
+        """Test detection of Node.js core module dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.js"
+        main.write_text("""
+import fs from 'fs';
+import path from 'path';
+const http = require('http');
+import('crypto').then(crypto => {});
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.js']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Check external dependencies summary
+        stdlib_deps = data['external_dependencies_summary']['stdlib']
+        assert 'fs' in stdlib_deps
+        assert 'path' in stdlib_deps
+        assert 'http' in stdlib_deps
+        assert 'crypto' in stdlib_deps
+        
+        # Check per-file dependencies
+        main_node = next(n for n in data['nodes'] if n['path'] == 'main.js')
+        assert 'fs' in main_node['external_dependencies']['stdlib']
+        assert 'path' in main_node['external_dependencies']['stdlib']
+    
+    def test_js_third_party_packages(self, tmp_path):
+        """Test detection of JavaScript third-party package dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.js"
+        main.write_text("""
+import express from 'express';
+import React from 'react';
+const lodash = require('lodash');
+import '@babel/core';
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.js']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Check external dependencies summary
+        third_party_deps = data['external_dependencies_summary']['third-party']
+        assert 'express' in third_party_deps
+        assert 'react' in third_party_deps
+        assert 'lodash' in third_party_deps
+        assert '@babel/core' in third_party_deps
+        
+        # Check per-file dependencies
+        main_node = next(n for n in data['nodes'] if n['path'] == 'main.js')
+        assert 'express' in main_node['external_dependencies']['third-party']
+        assert 'react' in main_node['external_dependencies']['third-party']
+    
+    def test_mixed_stdlib_and_third_party(self, tmp_path):
+        """Test detection of mixed stdlib and third-party dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.py"
+        main.write_text("""
+import os
+import sys
+import requests
+import numpy
+from pathlib import Path
+from django.http import HttpResponse
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Check counts
+        ext_summary = data['external_dependencies_summary']
+        assert ext_summary['stdlib_count'] > 0
+        assert ext_summary['third-party_count'] > 0
+        
+        # Verify segregation
+        stdlib_deps = set(ext_summary['stdlib'])
+        third_party_deps = set(ext_summary['third-party'])
+        
+        # Should not overlap
+        assert len(stdlib_deps & third_party_deps) == 0
+        
+        # Check specific classifications
+        assert 'os' in stdlib_deps
+        assert 'requests' in third_party_deps
+    
+    def test_relative_imports_not_tracked_as_external(self, tmp_path):
+        """Test that relative imports are not tracked as external dependencies."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        (source / "utils.py").write_text("# Utils")
+        main = source / "main.py"
+        main.write_text("""
+from . import utils
+from .. import config
+import os
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # Relative imports should not appear in external dependencies
+        main_node = next(n for n in data['nodes'] if n['path'] == 'main.py')
+        all_external = (
+            main_node['external_dependencies']['stdlib'] +
+            main_node['external_dependencies']['third-party']
+        )
+        
+        # Should not contain relative import paths
+        assert '.utils' not in all_external
+        assert '..config' not in all_external
+        
+        # But should contain os
+        assert 'os' in main_node['external_dependencies']['stdlib']
+    
+    def test_external_dependencies_in_markdown(self, tmp_path):
+        """Test that external dependencies appear in markdown report."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.py"
+        main.write_text("""
+import os
+import requests
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        md_file = output / "dependencies.md"
+        content = md_file.read_text()
+        
+        # Should have external dependencies section
+        assert "External Dependencies" in content
+        assert "Standard Library" in content
+        assert "Third-Party Packages" in content
+        
+        # Should list the dependencies
+        assert "`os`" in content
+        assert "`requests`" in content
+    
+    def test_deduplication_of_external_dependencies(self, tmp_path):
+        """Test that external dependencies are deduplicated across files."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        (source / "file1.py").write_text("import os\nimport requests")
+        (source / "file2.py").write_text("import os\nimport json")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        generate_dependency_report(
+            source,
+            output,
+            include_patterns=['*.py']
+        )
+        
+        json_file = output / "dependencies.json"
+        data = json.loads(json_file.read_text())
+        
+        # os should appear only once in summary even though used by both files
+        stdlib_deps = data['external_dependencies_summary']['stdlib']
+        assert stdlib_deps.count('os') == 1
+        assert stdlib_deps.count('json') == 1
+        
+        # requests should appear once
+        third_party_deps = data['external_dependencies_summary']['third-party']
+        assert third_party_deps.count('requests') == 1
+    
+    def test_external_dependencies_deterministic_ordering(self, tmp_path):
+        """Test that external dependencies are sorted deterministically."""
+        source = tmp_path / "source"
+        source.mkdir()
+        
+        main = source / "main.py"
+        main.write_text("""
+import zlib
+import os
+import sys
+import json
+""")
+        
+        output = tmp_path / "output"
+        output.mkdir()
+        
+        # Generate twice and compare
+        generate_dependency_report(source, output, include_patterns=['*.py'])
+        json_file = output / "dependencies.json"
+        data1 = json.loads(json_file.read_text())
+        
+        json_file.unlink()
+        
+        generate_dependency_report(source, output, include_patterns=['*.py'])
+        data2 = json.loads(json_file.read_text())
+        
+        # Should be identical
+        assert data1['external_dependencies_summary'] == data2['external_dependencies_summary']
+        
+        # Should be sorted
+        stdlib_deps = data1['external_dependencies_summary']['stdlib']
+        assert stdlib_deps == sorted(stdlib_deps)

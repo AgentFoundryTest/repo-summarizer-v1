@@ -1,0 +1,36 @@
+# repo-summarizer-v1
+
+├── .pytest_cache
+  ├── v
+    └── cache
+      ├── lastfailed
+      └── nodeids
+  ├── .gitignore
+  ├── CACHEDIR.TAG
+  └── README.md
+├── repo_analyzer
+  ├── __init__.py
+  ├── cli.py
+  ├── dependency_graph.py
+  ├── file_summary.py
+  ├── stdlib_classification.py
+  └── tree_report.py
+├── repo_analyzer.egg-info
+  ├── dependency_links.txt
+  ├── entry_points.txt
+  ├── PKG-INFO
+  ├── requires.txt
+  ├── SOURCES.txt
+  └── top_level.txt
+├── self-analysis
+  └── SUMMARY.md
+├── tests
+  ├── test_dependency_graph.py
+  ├── test_file_summary.py
+  ├── test_stdlib_classification.py
+  └── test_tree_report.py
+├── .gitignore
+├── LICENSE
+├── pyproject.toml
+├── README.md
+└── repo-analyzer.config.json

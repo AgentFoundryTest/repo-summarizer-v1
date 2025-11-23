@@ -678,11 +678,26 @@ def _create_structured_summary(
     
     # Add dependencies field for detailed level
     if detail_level == "detailed":
-        # Placeholder for dependency information
-        # This could reference the dependency graph results
+        # Get external dependencies for this file
+        from repo_analyzer.dependency_graph import _scan_file_dependencies_with_external
+        
+        external_deps = {'stdlib': [], 'third-party': []}
+        
+        # Only scan supported file types
+        if language in ['Python', 'JavaScript', 'TypeScript']:
+            try:
+                _, external_deps = _scan_file_dependencies_with_external(file_path, root_path)
+            except (IOError, OSError):
+                # If we can't read the file, leave dependencies empty
+                pass
+        
         summary["dependencies"] = {
-            "imports": [],  # Empty for heuristic-only implementation
-            "exports": [],  # Empty for heuristic-only implementation
+            "imports": [],  # Placeholder for future enhancement (would list all imports)
+            "exports": [],  # Placeholder for future enhancement (would list all exports)
+            "external": {
+                "stdlib": sorted(external_deps.get('stdlib', [])),
+                "third-party": sorted(external_deps.get('third-party', []))
+            }
         }
     
     return summary
@@ -869,6 +884,25 @@ def generate_file_summaries(
                 # Always show warning if present, even without declarations
                 if 'warning' in entry['structure']:
                     markdown_lines.append(f"**Warning:** {entry['structure']['warning']}  ")
+            
+            # Add external dependencies if present
+            if 'dependencies' in entry and 'external' in entry['dependencies']:
+                external = entry['dependencies']['external']
+                stdlib_deps = external.get('stdlib', [])
+                third_party_deps = external.get('third-party', [])
+                
+                if stdlib_deps or third_party_deps:
+                    markdown_lines.append(f"**External Dependencies:**")
+                    
+                    if stdlib_deps:
+                        markdown_lines.append(f"  - **Stdlib:** {', '.join(f'`{d}`' for d in stdlib_deps[:5])}")
+                        if len(stdlib_deps) > 5:
+                            markdown_lines.append(f"    _(and {len(stdlib_deps) - 5} more)_")
+                    
+                    if third_party_deps:
+                        markdown_lines.append(f"  - **Third-party:** {', '.join(f'`{d}`' for d in third_party_deps[:5])}")
+                        if len(third_party_deps) > 5:
+                            markdown_lines.append(f"    _(and {len(third_party_deps) - 5} more)_")
             
             markdown_lines.append("")  # Empty line between entries
         

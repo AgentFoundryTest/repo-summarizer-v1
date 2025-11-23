@@ -320,10 +320,43 @@ Control the output format via `file_summary_config` in your configuration file:
   },
   "dependencies": {
     "imports": [],
-    "exports": []
+    "exports": [],
+    "external": {
+      "stdlib": ["os", "sys", "pathlib.Path"],
+      "third-party": ["requests", "django.http.HttpResponse"]
+    }
   }
 }
 ```
+
+### External Dependencies (Detailed Level)
+
+At the "detailed" level, file summaries include classifications of external dependencies:
+
+- **Standard Library / Core Modules**: Built-in modules (Python stdlib, Node.js core modules)
+- **Third-Party Packages**: External packages from PyPI, npm, etc.
+
+Classification is performed **deterministically without network calls** using comprehensive built-in tables:
+- Python: 100+ stdlib modules (os, sys, pathlib, typing, asyncio, etc.)
+- Node.js: 70+ core modules (fs, path, http, crypto, etc.)
+
+**Example:**
+```json
+{
+  "dependencies": {
+    "external": {
+      "stdlib": ["os", "sys", "json"],
+      "third-party": ["requests", "numpy", "django.http.HttpResponse"]
+    }
+  }
+}
+```
+
+**Key Features:**
+- Relative imports (e.g., `from . import utils`) are excluded from external dependencies
+- Dependencies are deduplicated and sorted for deterministic output
+- Both per-file and aggregated summaries are available
+- Supports Python and JavaScript/TypeScript ecosystems
 
 ### Migration Guide
 
@@ -353,6 +386,57 @@ To take advantage of new features:
 - **Unknown languages**: Files in unsupported languages will have basic metrics but no declarations
 - **Files without extensions**: Will be classified as "Unknown" language with role based on filename/path
 
+### Dependency Graph Features
+
+The `dependencies.json` and `dependencies.md` outputs provide comprehensive dependency analysis:
+
+#### Intra-Repository Dependencies
+- Tracks import/require statements across Python and JavaScript/TypeScript files
+- Resolves relative and absolute imports to actual file paths within the repository
+- Provides graph structure with nodes (files) and edges (dependencies)
+- Identifies most depended-upon files and files with most dependencies
+
+#### External Dependencies
+- **Automatic Classification**: Distinguishes between stdlib/core modules and third-party packages
+- **Deterministic & Offline**: No network calls or package manager invocations required
+- **Per-File Tracking**: Each file node includes its external dependencies
+- **Aggregated Statistics**: Summary counts and lists of all external dependencies
+
+**Example `dependencies.json` structure:**
+```json
+{
+  "nodes": [
+    {
+      "id": "main.py",
+      "path": "main.py",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": ["os", "sys", "json"],
+        "third-party": ["requests", "numpy"]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "main.py",
+      "target": "utils.py"
+    }
+  ],
+  "external_dependencies_summary": {
+    "stdlib": ["asyncio", "json", "os", "pathlib", "sys"],
+    "third-party": ["django", "numpy", "requests"],
+    "stdlib_count": 5,
+    "third-party_count": 3
+  }
+}
+```
+
+**Classification Tables:**
+- **Python**: 100+ stdlib modules (os, sys, pathlib, typing, asyncio, collections, etc.)
+- **Node.js**: 70+ core modules (fs, path, http, https, crypto, stream, etc.)
+- Tables are maintained in code at `repo_analyzer/stdlib_classification.py`
+- Future updates can easily extend classification for additional ecosystems
+
 ## Development Status
 
 Current implementation includes:
@@ -367,7 +451,12 @@ Current implementation includes:
   - ✅ LOC and TODO/FIXME counting
   - ✅ Role inference with justifications
   - ✅ Graceful error handling for syntax errors
+  - ✅ External dependency tracking (stdlib vs third-party) at detailed level
 - ✅ Dependency scanner (Markdown + JSON, Python + JS/TS imports)
+  - ✅ Intra-repository dependency graph
+  - ✅ External dependency classification (stdlib vs third-party)
+  - ✅ Per-file and aggregated external dependency reporting
+  - ✅ Deterministic classification without network calls
 
 ## Error Handling
 
