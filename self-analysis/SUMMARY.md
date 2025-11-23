@@ -8,10 +8,13 @@ This analysis demonstrates the **Schema v2.0** capabilities:
 
 ### 🎯 Role-Based Classification
 Files are automatically categorized with explanations:
-- **CLI files**: Command-line interface implementations (`cli.py`)
-- **Module initialization**: Package setup files (`__init__.py`)
+- **CLI files**: Command-line interface implementations
+- **Module initialization**: Package setup files (__init__.py, index.js)
 - **Implementation modules**: Core logic and functionality
 - **Test files**: Test suites and test utilities
+- **Configuration files**: Settings and config files
+- **Entry points**: Main application entry points
+- And 10+ more role types
 
 ### 📊 Structured Metrics
 Each file includes quantitative analysis:
@@ -22,8 +25,8 @@ Each file includes quantitative analysis:
 
 ### 🔗 External Dependency Classification
 Dependencies are categorized deterministically:
-- **Standard Library**: Built-in Python modules (os, sys, pathlib, etc.)
-- **Third-Party Packages**: External dependencies from PyPI
+- **Standard Library**: Built-in modules (Python stdlib, Node.js core modules)
+- **Third-Party Packages**: External dependencies from package registries
 - **Per-file tracking**: Each file's external dependencies are captured
 - **Aggregate statistics**: Repository-wide dependency summary
 
@@ -67,13 +70,13 @@ Human-readable format: [dependencies.md](dependencies.md)
 
 ## Configuration Details
 
-This analysis was generated using:
-- **Detail Level**: `standard` (includes metrics without full structure parsing)
-- **Legacy Compatibility**: Enabled (includes v1.0 compatible fields)
-- **Max File Size**: 1024 KB (files larger than this skip expensive parsing)
-- **Excluded Patterns**: `.git`, `__pycache__`, `.pyc`, `node_modules`, `.venv`, `venv`
+This analysis was generated using the configuration in repo-analyzer.config.json:
+- **Detail Level**: Configurable (minimal/standard/detailed)
+- **Legacy Compatibility**: Backward-compatible with v1.0 consumers
+- **Max File Size**: Configurable threshold for expensive parsing operations
+- **Excluded Patterns**: Customizable exclusion rules for tree traversal
 
-For configuration options, see [repo-analyzer.config.json](../repo-analyzer.config.json)
+For configuration options, see repo-analyzer.config.json or the project README.
 
 ## Schema Information
 
@@ -85,11 +88,11 @@ Schema v2.0 provides backward compatibility while adding:
 - Optional structure parsing (detailed level)
 - External dependency tracking and classification (detailed level)
 
-For migration information and detailed schema documentation, see the [README.md](../README.md)
+For migration information and detailed schema documentation, see the project README.
 
 ## Analysis Metadata
 
 - **Tool Version**: Repository Analyzer v0.2.0
-- **Configuration**: See [repo-analyzer.config.json](../repo-analyzer.config.json)
+- **Configuration**: See repo-analyzer.config.json
 - **Schema Version**: 2.0 (backward compatible with v1.0 consumers)
 - **Timestamp**: Generated on repository scan
