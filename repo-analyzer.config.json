@@ -21,7 +21,9 @@
       "*.java",
       "*.go",
       "*.rs"
-    ]
+    ],
+    "detail_level": "standard",
+    "include_legacy_summary": true
   },
   "dependency_config": {
     "scan_package_files": true,

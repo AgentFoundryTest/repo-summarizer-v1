@@ -4,12 +4,22 @@ Repository file summary generator.
 Analyzes source files to produce deterministic human- and machine-readable summaries
 derived solely from filenames, extensions, and paths. No external calls or dynamic
 code execution.
+
+Schema Version: 2.0
+- Version 1.0: Simple string summaries (legacy)
+- Version 2.0: Structured summaries with role, metrics, structure, and dependencies
 """
 
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Optional, Set, Literal
+
+# Schema version for structured summaries
+SCHEMA_VERSION = "2.0"
+
+# Detail levels for summary generation
+DetailLevel = Literal["minimal", "standard", "detailed"]
 
 
 # Language mapping based on file extensions
@@ -108,6 +118,112 @@ def _get_language(file_path: Path) -> str:
     """
     extension = file_path.suffix.lower()
     return LANGUAGE_MAP.get(extension, 'Unknown')
+
+
+def _detect_file_role(file_path: Path, root_path: Path) -> str:
+    """
+    Detect the role/purpose of a file based on its name and path.
+    
+    Args:
+        file_path: Path to the file
+        root_path: Root path of the repository
+    
+    Returns:
+        Role string (e.g., "entry-point", "test", "configuration", "utility", "model")
+    """
+    name = file_path.stem
+    name_lower = name.lower()
+    extension = file_path.suffix.lower()
+    
+    # Get relative path for context
+    try:
+        rel_path = file_path.relative_to(root_path)
+        path_parts = list(rel_path.parent.parts)
+    except ValueError:
+        path_parts = []
+    
+    # Test files
+    if name_lower.startswith('test_') or name_lower.endswith('_test') or name_lower.startswith('test'):
+        return "test"
+    if path_parts and path_parts[0].lower() in ['tests', 'test']:
+        return "test"
+    
+    # Entry point files
+    if name_lower in ['main', 'index', 'app', '__main__']:
+        return "entry-point"
+    
+    # Configuration files
+    if name_lower in ['config', 'configuration', 'settings']:
+        return "configuration"
+    if extension in ['.json', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf']:
+        return "configuration"
+    
+    # CLI files
+    if name_lower in ['cli', 'command', 'commands']:
+        return "cli"
+    
+    # Utility files
+    if name_lower in ['utils', 'util', 'utilities', 'helpers', 'helper']:
+        return "utility"
+    
+    # Model/schema files
+    if name_lower in ['model', 'models', 'schema', 'schemas']:
+        return "model"
+    
+    # Controller/handler files
+    if name_lower in ['controller', 'controllers', 'handler', 'handlers']:
+        return "controller"
+    
+    # View/template files
+    if name_lower in ['view', 'views', 'template', 'templates']:
+        return "view"
+    
+    # Service layer files
+    if name_lower in ['service', 'services']:
+        return "service"
+    
+    # Data access layer
+    if name_lower in ['repository', 'repositories', 'dao']:
+        return "data-access"
+    
+    # API files
+    if 'api' in name_lower:
+        return "api"
+    
+    # Database files
+    if 'db' in name_lower or 'database' in name_lower:
+        return "database"
+    
+    # Router files
+    if 'router' in name_lower or 'routes' in name_lower:
+        return "router"
+    
+    # Middleware files
+    if 'middleware' in name_lower:
+        return "middleware"
+    
+    # Component files (for JS/TS frameworks)
+    if extension in ['.jsx', '.tsx', '.vue'] or 'component' in name_lower:
+        return "component"
+    
+    # Module initialization
+    if name_lower in ['__init__', 'mod']:
+        return "module-init"
+    
+    # Documentation
+    if extension in ['.md', '.rst'] or (path_parts and path_parts[0].lower() in ['docs', 'documentation']):
+        return "documentation"
+    
+    # Scripts
+    if path_parts and path_parts[0].lower() in ['scripts', 'bin']:
+        return "script"
+    
+    # Examples
+    if path_parts and path_parts[0].lower() in ['examples', 'demos', 'samples']:
+        return "example"
+    
+    # Default to "implementation"
+    return "implementation"
 
 
 def _generate_heuristic_summary(file_path: Path, root_path: Path) -> str:
@@ -226,6 +342,78 @@ def _generate_heuristic_summary(file_path: Path, root_path: Path) -> str:
         return f"Source file for {words}"
 
 
+def _create_structured_summary(
+    file_path: Path,
+    root_path: Path,
+    detail_level: DetailLevel = "standard",
+    include_legacy: bool = True
+) -> Dict[str, Any]:
+    """
+    Create a structured summary for a file with metadata.
+    
+    Args:
+        file_path: Path to the file
+        root_path: Root path of the repository
+        detail_level: Level of detail ("minimal", "standard", "detailed")
+        include_legacy: Whether to include legacy summary field
+    
+    Returns:
+        Dictionary with structured summary data
+    """
+    try:
+        rel_path = file_path.relative_to(root_path)
+    except ValueError:
+        rel_path = file_path
+    
+    language = _get_language(file_path)
+    role = _detect_file_role(file_path, root_path)
+    
+    # Build the structured summary with deterministic key ordering
+    summary = {
+        "schema_version": SCHEMA_VERSION,
+        "path": str(rel_path.as_posix()),
+        "language": language,
+        "role": role,
+    }
+    
+    # Add legacy summary field for backward compatibility
+    if include_legacy:
+        summary["summary"] = _generate_heuristic_summary(file_path, root_path)
+        # Also add as summary_text for additional compatibility
+        summary["summary_text"] = summary["summary"]
+    
+    # Add metrics based on detail level
+    if detail_level in ["standard", "detailed"]:
+        try:
+            file_size = file_path.stat().st_size
+            summary["metrics"] = {
+                "size_bytes": file_size,
+            }
+        except (OSError, IOError):
+            summary["metrics"] = {
+                "size_bytes": 0,
+            }
+    
+    # Add structure field for detailed level
+    if detail_level == "detailed":
+        # For now, structure is placeholder - could be extended to detect
+        # top-level declarations (functions, classes, exports) via static analysis
+        summary["structure"] = {
+            "declarations": [],  # Empty for heuristic-only implementation
+        }
+    
+    # Add dependencies field for detailed level
+    if detail_level == "detailed":
+        # Placeholder for dependency information
+        # This could reference the dependency graph results
+        summary["dependencies"] = {
+            "imports": [],  # Empty for heuristic-only implementation
+            "exports": [],  # Empty for heuristic-only implementation
+        }
+    
+    return summary
+
+
 def scan_files(
     root_path: Path,
     include_patterns: Optional[List[str]] = None,
@@ -318,7 +506,9 @@ def generate_file_summaries(
     include_patterns: Optional[List[str]] = None,
     exclude_patterns: Optional[List[str]] = None,
     exclude_dirs: Optional[Set[str]] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
+    detail_level: DetailLevel = "standard",
+    include_legacy_summary: bool = True
 ) -> None:
     """
     Generate file summaries in Markdown and JSON formats.
@@ -330,6 +520,8 @@ def generate_file_summaries(
         exclude_patterns: List of patterns to exclude (e.g., ['*.pyc', 'test_*'])
         exclude_dirs: Set of directory names to skip
         dry_run: If True, only log intent without writing files
+        detail_level: Level of detail ("minimal", "standard", "detailed")
+        include_legacy_summary: Whether to include legacy summary field for backward compatibility
     
     Raises:
         FileSummaryError: If file summary generation fails
@@ -345,33 +537,39 @@ def generate_file_summaries(
                 print("No files found matching criteria")
             return
         
-        # Generate summaries for each file
+        # Generate structured summaries for each file
         summaries = []
         for file_path in files:
-            try:
-                rel_path = file_path.relative_to(root_path)
-            except ValueError:
-                # File is outside root_path, use absolute path
-                rel_path = file_path
-            
-            language = _get_language(file_path)
-            summary = _generate_heuristic_summary(file_path, root_path)
-            
-            summaries.append({
-                'path': str(rel_path.as_posix()),
-                'language': language,
-                'summary': summary
-            })
+            structured_summary = _create_structured_summary(
+                file_path,
+                root_path,
+                detail_level=detail_level,
+                include_legacy=include_legacy_summary
+            )
+            summaries.append(structured_summary)
         
         # Generate Markdown output
         markdown_lines = ["# File Summaries\n"]
         markdown_lines.append("Heuristic summaries of source files based on filenames, extensions, and paths.\n")
+        markdown_lines.append(f"Schema Version: {SCHEMA_VERSION}\n")
         markdown_lines.append(f"Total files: {len(summaries)}\n")
         
         for entry in summaries:
             markdown_lines.append(f"## {entry['path']}")
             markdown_lines.append(f"**Language:** {entry['language']}  ")
-            markdown_lines.append(f"**Summary:** {entry['summary']}\n")
+            markdown_lines.append(f"**Role:** {entry['role']}  ")
+            
+            # Include legacy summary if present
+            if 'summary' in entry:
+                markdown_lines.append(f"**Summary:** {entry['summary']}  ")
+            
+            # Add metrics if present
+            if 'metrics' in entry:
+                metrics = entry['metrics']
+                size_kb = metrics['size_bytes'] / 1024
+                markdown_lines.append(f"**Size:** {size_kb:.2f} KB  ")
+            
+            markdown_lines.append("")  # Empty line between entries
         
         markdown_content = "\n".join(markdown_lines)
         markdown_path = output_dir / "file-summaries.md"
@@ -385,8 +583,9 @@ def generate_file_summaries(
                 f.write(markdown_content)
             print(f"File summaries written: {markdown_path}")
         
-        # Generate JSON output
+        # Generate JSON output with stable ordering
         json_data = {
+            'schema_version': SCHEMA_VERSION,
             'total_files': len(summaries),
             'files': summaries
         }
@@ -397,7 +596,8 @@ def generate_file_summaries(
             print(f"[DRY RUN] JSON entries: {len(summaries)}")
         else:
             with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2)
+                # Use indent=2 for readability and sort_keys=False to maintain insertion order
+                json.dump(json_data, f, indent=2, sort_keys=False)
             print(f"File summaries JSON written: {json_path}")
     
     except Exception as e:
