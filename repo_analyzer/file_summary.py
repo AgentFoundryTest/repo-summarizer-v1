@@ -319,6 +319,22 @@ def _get_language(file_path: Path) -> str:
     return LANGUAGE_MAP.get(extension, 'Unknown')
 
 
+def _is_interface_name(name: str) -> bool:
+    """
+    Check if a name follows interface naming conventions.
+    
+    Returns True for names that start with 'I' followed by an uppercase letter
+    (e.g., IUser, IFoo) but not lowercase (e.g., image, input).
+    
+    Args:
+        name: The file name (stem, without extension)
+    
+    Returns:
+        True if the name follows interface conventions, False otherwise
+    """
+    return name.startswith('I') and len(name) > 1 and name[1].isupper()
+
+
 def _apply_language_specific_heuristics(
     language: str,
     name: str,
@@ -353,7 +369,7 @@ def _apply_language_specific_heuristics(
             elif name_lower in ['config', 'types', 'defs', 'definitions']:
                 return f"{language} header defining types and constants"
             # Check for interface naming: starts with 'I' followed by uppercase (IFoo, not image.h)
-            elif (name.startswith('I') and len(name) > 1 and name[1].isupper()) or 'interface' in name_lower:
+            elif _is_interface_name(name) or 'interface' in name_lower:
                 return f"{language} interface header"
             else:
                 return f"{language} header file (declarations and interfaces)"
@@ -416,7 +432,7 @@ def _apply_language_specific_heuristics(
     elif language == 'Java':
         # Check if name follows Interface naming convention
         # Only match I followed by uppercase letter to avoid false positives like "Input.java"
-        if name.startswith('I') and len(name) > 1 and name[1].isupper():
+        if _is_interface_name(name):
             return "Java interface definition"
         elif name.endswith('Interface'):
             return "Java interface definition"
@@ -445,7 +461,7 @@ def _apply_language_specific_heuristics(
     
     # C# specific heuristics
     elif language == 'C#':
-        if name.startswith('I') and len(name) > 1 and name[1].isupper():
+        if _is_interface_name(name):
             return "C# interface definition"
         elif name.endswith('Interface'):
             return "C# interface definition"
@@ -532,9 +548,8 @@ def _apply_language_specific_heuristics(
             return "CSS component styles"
         elif 'util' in name_lower or 'helper' in name_lower:
             return "CSS utility classes"
-        # Minified CSS files typically have .min in the extension (style.min.css)
-        # Check if the extension itself contains 'min' or the name ends with 'min'
-        elif name_lower.endswith('min') or '.min.' in str(file_path):
+        # Minified CSS: check if name ends with 'min' (e.g., stylemin.css, bootstrap-min.css)
+        elif name_lower.endswith('min'):
             return "CSS minified stylesheet"
         else:
             return "CSS stylesheet"

@@ -1919,6 +1919,12 @@ import os
 class TestLanguageSpecificHeuristics:
     """Tests for language-specific heuristics added for new languages."""
     
+    # Common include patterns for multi-language tests
+    ALL_NEW_LANGUAGES_PATTERNS = [
+        '*.c', '*.cpp', '*.rs', '*.go', '*.java', 
+        '*.html', '*.css', '*.sql', '*.cs', '*.swift'
+    ]
+    
     def test_c_header_files(self, tmp_path):
         """Test C header file heuristics."""
         from repo_analyzer.file_summary import _generate_heuristic_summary
@@ -2330,7 +2336,7 @@ class TestLanguageSpecificHeuristics:
         generate_file_summaries(
             source,
             output,
-            include_patterns=['*.c', '*.cpp', '*.rs', '*.go', '*.java', '*.html', '*.css', '*.sql', '*.cs', '*.swift']
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
         )
         
         json_file = output / 'file-summaries.json'
@@ -2341,7 +2347,7 @@ class TestLanguageSpecificHeuristics:
         generate_file_summaries(
             source,
             output,
-            include_patterns=['*.c', '*.cpp', '*.rs', '*.go', '*.java', '*.html', '*.css', '*.sql', '*.cs', '*.swift']
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
         )
         
         data2 = json.loads(json_file.read_text())
@@ -2358,13 +2364,8 @@ class TestLanguageSpecificHeuristics:
         # Verify all summaries are language-specific
         for entry in data1['files']:
             assert entry['language'] in entry['summary']
-            # Each should have a specific description, not generic fallback like "module for"
-            # Exception: Rust files in src/ directory may use "module" terminology
-            if not (entry['path'].endswith('.rs') and 'module' in entry['summary']):
-                # Other files should not use the generic "module for" fallback
-                if 'module for' in entry['summary']:
-                    # Allow only for files where it's actually appropriate
-                    pass
+            # Each file should have received a language-specific heuristic or appropriate fallback
+            # We don't test for specific patterns here as that's covered in individual tests
     
     def test_header_implementation_pairs(self, tmp_path):
         """Test that C/C++ header and implementation files get appropriate summaries."""
