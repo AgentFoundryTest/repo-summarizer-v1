@@ -21,6 +21,8 @@ import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Set, Literal, Tuple
 
+from repo_analyzer.language_registry import get_global_registry
+
 # Schema version for structured summaries
 SCHEMA_VERSION = "2.0"
 
@@ -295,7 +297,9 @@ def _matches_pattern(path: str, patterns: List[str]) -> bool:
 
 def _get_language(file_path: Path) -> str:
     """
-    Detect language from file extension.
+    Detect language from file extension using the language registry.
+    
+    Falls back to legacy LANGUAGE_MAP for backward compatibility.
     
     Args:
         file_path: Path to the file
@@ -304,6 +308,14 @@ def _get_language(file_path: Path) -> str:
         Language name or 'Unknown'
     """
     extension = file_path.suffix.lower()
+    
+    # Try registry first
+    registry = get_global_registry()
+    language = registry.get_language_by_extension(extension)
+    if language:
+        return language
+    
+    # Fall back to legacy map for any missing mappings
     return LANGUAGE_MAP.get(extension, 'Unknown')
 
 

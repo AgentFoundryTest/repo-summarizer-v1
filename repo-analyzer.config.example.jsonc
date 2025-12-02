@@ -35,6 +35,7 @@
 
     // File patterns to include in analysis (glob patterns)
     // Only files matching these patterns will be analyzed
+    // If empty or not specified, patterns will be auto-generated from enabled languages
     "include_patterns": [
       "*.py",      // Python files
       "*.js",      // JavaScript files
@@ -83,5 +84,43 @@
       "go.mod",           // Go module dependencies
       "Cargo.toml"        // Rust cargo dependencies
     ]
+  },
+
+  // Language registry configuration
+  // Controls which programming languages are analyzed and how they are detected
+  "language_config": {
+    // Explicitly enable specific languages (null = all languages enabled by default)
+    // When set to a list, ONLY these languages will be analyzed
+    // When null, all registered languages are enabled unless listed in disabled_languages
+    //
+    // Supported languages include:
+    // - Python, JavaScript, TypeScript (with full parsing support)
+    // - C, C++, C#, Rust, Go, Java, Swift (basic support)
+    // - HTML, CSS, SQL (basic support)
+    // - And many more (see language_registry.py for full list)
+    //
+    // Example to analyze only Python and JavaScript:
+    // "enabled_languages": ["Python", "JavaScript"]
+    "enabled_languages": null,
+
+    // Explicitly disable specific languages
+    // These languages will not be analyzed even if matched by include_patterns
+    // Useful for excluding languages you don't want to track
+    //
+    // Example to exclude Ruby and PHP:
+    // "disabled_languages": ["Ruby", "PHP"]
+    "disabled_languages": [],
+
+    // Language-specific overrides
+    // Fine-tune individual language settings including priority and enabled status
+    // Priority determines which language wins for shared extensions (e.g., .h for C/C++)
+    // Higher priority = preferred for ambiguous extensions
+    //
+    // Example to give Python higher priority and disable Ruby:
+    // "language_overrides": {
+    //   "Python": {"priority": 15, "enabled": true},
+    //   "Ruby": {"enabled": false}
+    // }
+    "language_overrides": {}
   }
 }

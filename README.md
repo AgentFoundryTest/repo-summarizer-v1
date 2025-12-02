@@ -74,6 +74,11 @@ For a fully commented configuration example, see [`repo-analyzer.config.example.
   "dependency_config": {
     "scan_package_files": true,
     "package_files": ["package.json", "requirements.txt", "pyproject.toml"]
+  },
+  "language_config": {
+    "enabled_languages": null,
+    "disabled_languages": [],
+    "language_overrides": {}
   }
 }
 ```
@@ -83,6 +88,180 @@ For a fully commented configuration example, see [`repo-analyzer.config.example.
   - Default: `"standard"` (recommended for most use cases)
 - `include_legacy_summary`: Include backward-compatible summary fields (`true`/`false`)
   - Default: `true` (ensures compatibility with existing consumers)
+
+### Language Registry
+
+The analyzer includes a **pluggable language registry** that provides deterministic language detection and allows fine-grained control over which languages are analyzed. This enables multi-language repository analysis without modifying core code.
+
+#### Supported Languages
+
+The registry includes built-in support for:
+
+**Full Support** (with structure parsing and dependency scanning):
+- **Python** (.py, .pyw) - AST-based parsing
+- **JavaScript** (.js, .jsx, .mjs, .cjs) - Regex-based parsing
+- **TypeScript** (.ts, .tsx) - Regex-based parsing
+
+**Basic Support** (file detection and metrics):
+- **C** (.c)
+- **C++** (.cpp, .cc, .cxx, .hpp, .hh, .hxx, .h)
+- **C#** (.cs)
+- **Rust** (.rs)
+- **Go** (.go)
+- **Java** (.java)
+- **Swift** (.swift)
+- **HTML** (.html, .htm)
+- **CSS** (.css)
+- **SQL** (.sql)
+
+**Additional Languages** (lower priority):
+- Ruby, PHP, Kotlin, Scala, Shell, Bash, Zsh, PowerShell, R, Objective-C, SCSS, Sass, Less, Vue, Markdown, reStructuredText, YAML, JSON, XML, TOML, INI, Config files
+
+#### Language Configuration Options
+
+Configure language support through the `language_config` section:
+
+```json
+{
+  "language_config": {
+    "enabled_languages": null,
+    "disabled_languages": [],
+    "language_overrides": {}
+  }
+}
+```
+
+**Options:**
+
+- **`enabled_languages`**: Explicitly enable specific languages
+  - When `null` (default): All languages are enabled
+  - When set to a list: ONLY those languages will be analyzed
+  - Example: `["Python", "JavaScript", "TypeScript"]`
+
+- **`disabled_languages`**: Explicitly disable specific languages
+  - Languages in this list will not be analyzed
+  - Useful for excluding languages you don't want to track
+  - Takes precedence over `enabled_languages` if a language appears in both
+  - Example: `["Ruby", "PHP"]`
+
+- **`language_overrides`**: Fine-tune individual language settings
+  - Set language-specific priority and enabled status
+  - Priority determines which language wins for shared extensions (e.g., .h for C/C++)
+  - Higher priority = preferred for ambiguous extensions
+  - Example:
+    ```json
+    {
+      "Python": {"priority": 15, "enabled": true},
+      "Ruby": {"enabled": false}
+    }
+    ```
+
+**Configuration Processing Order:**
+1. `enabled_languages` is processed first (if specified, disables all other languages)
+2. `disabled_languages` is processed second (disables specified languages)
+3. `language_overrides` is processed last (applies individual settings)
+
+**Note:** If a language appears in both `enabled_languages` and `disabled_languages`, it will be disabled (disabled takes precedence).
+
+#### Extension Conflict Resolution
+
+Some file extensions are shared across multiple languages (e.g., `.h` for C/C++). The registry uses **priority-based resolution**:
+
+- Each language has a priority (default priorities: 2-10)
+- Higher priority wins for shared extensions
+- **Equal priorities**: When two languages have equal priority for a shared extension, behavior is implementation-defined (last registered typically wins)
+- Default priorities favor:
+  - Full-support languages (priority 10): Python, JavaScript, TypeScript
+  - Primary compiled languages (priority 8-9): C++, C, C#, Rust, Go, Java, Swift
+  - Markup and config languages (priority 2-5)
+
+You can override priorities through `language_overrides` to customize conflict resolution.
+
+#### Auto-Generated Include Patterns
+
+If `file_summary_config.include_patterns` is empty or not specified, the analyzer automatically generates patterns from **enabled languages only**:
+
+```json
+{
+  "file_summary_config": {
+    "include_patterns": []  // Auto-generated from enabled languages
+  },
+  "language_config": {
+    "enabled_languages": ["Python", "JavaScript"]
+  }
+}
+```
+
+This automatically analyzes `.py`, `.js`, `.jsx`, `.mjs`, `.cjs` files without manual pattern configuration.
+
+#### Usage Examples
+
+**Example 1: Analyze only Python and JavaScript**
+```json
+{
+  "language_config": {
+    "enabled_languages": ["Python", "JavaScript"]
+  }
+}
+```
+
+**Example 2: Exclude markup and config files**
+```json
+{
+  "language_config": {
+    "disabled_languages": ["Markdown", "YAML", "JSON", "TOML"]
+  }
+}
+```
+
+**Example 3: Prioritize C over C++ for .h files**
+```json
+{
+  "language_config": {
+    "language_overrides": {
+      "C": {"priority": 100}
+    }
+  }
+}
+```
+
+**Example 4: Mixed-language repository**
+```json
+{
+  "language_config": {
+    "enabled_languages": ["Python", "JavaScript", "TypeScript", "Go", "Rust"]
+  }
+}
+```
+
+#### Extending Language Support
+
+To add support for a new language:
+
+1. **Via Configuration** (recommended for simple cases):
+   - No code changes needed
+   - Use `language_overrides` to customize existing languages
+   - Limited to file detection and basic metrics
+
+2. **Via Code Extension** (for full support):
+   - Add language to `language_registry.py` with parser capabilities
+   - Implement structure parser in `file_summary.py`
+   - Add dependency scanner in `dependency_graph.py`
+   - Provides full analysis capabilities
+
+The registry design ensures new languages can be added without breaking existing functionality or changing CLI contracts.
+
+#### Backward Compatibility
+
+The language registry maintains full backward compatibility:
+
+- **Existing configs without `language_config`**: Work unchanged (all languages enabled)
+- **Existing `include_patterns`**: Take precedence over auto-generated patterns
+- **Legacy `LANGUAGE_MAP`**: Used as fallback for any unmapped extensions
+- **CLI flags**: Unchanged behavior
+- **Output formats**: Identical structure
+
+Repositories can adopt the language registry incrementally without disrupting existing workflows.
 
 ### CLI Arguments
 

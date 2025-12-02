@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional
 from repo_analyzer.tree_report import generate_tree_report, TreeReportError
 from repo_analyzer.file_summary import generate_file_summaries, FileSummaryError
 from repo_analyzer.dependency_graph import generate_dependency_report, DependencyGraphError
+from repo_analyzer.language_registry import get_global_registry
 
 
 DEFAULT_CONFIG_FILE = "repo-analyzer.config.json"
@@ -130,6 +131,23 @@ def merge_config(file_config: Dict[str, Any], cli_args: argparse.Namespace) -> D
         config['dry_run'] = False
     
     return config
+
+
+def apply_language_config(config: Dict[str, Any]) -> None:
+    """
+    Apply language configuration to the global registry.
+    
+    This function configures the language registry based on the provided
+    configuration. It supports enabling/disabling languages and setting
+    language-specific overrides.
+    
+    Args:
+        config: Configuration dictionary potentially containing 'language_config'
+    """
+    language_config = config.get('language_config')
+    if language_config:
+        registry = get_global_registry()
+        registry.apply_config(language_config)
 
 
 def validate_output_path(output_dir: str) -> Path:
@@ -332,6 +350,9 @@ def run_scan(config: Dict[str, Any]) -> int:
     dry_run = config['dry_run']
     
     try:
+        # Apply language configuration to the registry
+        apply_language_config(config)
+        
         # Validate output path
         output_dir = validate_output_path(output_dir_str)
         
@@ -363,6 +384,26 @@ def run_scan(config: Dict[str, Any]) -> int:
         # Generate file summaries
         file_summary_config = config.get('file_summary_config', {})
         include_patterns = file_summary_config.get('include_patterns', [])
+        
+        # If no include_patterns specified, generate from enabled languages in registry
+        if not include_patterns:
+            registry = get_global_registry()
+            enabled_languages = registry.get_enabled_languages()
+            # Generate patterns like *.py, *.js from all enabled language extensions
+            # Validate extensions start with a dot and contain only valid glob characters
+            include_patterns = []
+            for lang in enabled_languages:
+                for ext in lang.extensions:
+                    # Ensure extension format is valid (starts with dot)
+                    if ext.startswith('.') and len(ext) > 1:
+                        # Create glob pattern
+                        pattern = f"*{ext}"
+                        include_patterns.append(pattern)
+            
+            # If no valid patterns generated, fall back to empty list (scan nothing)
+            # This is safer than scanning all files
+            if not include_patterns:
+                print("Warning: No valid file patterns generated from enabled languages")
         
         # Get exclude patterns from file_summary_config
         file_exclude_patterns = file_summary_config.get('exclude_patterns', [])

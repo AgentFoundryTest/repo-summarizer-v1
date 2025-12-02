@@ -35,5 +35,10 @@
       "go.mod",
       "Cargo.toml"
     ]
+  },
+  "language_config": {
+    "enabled_languages": null,
+    "disabled_languages": [],
+    "language_overrides": {}
   }
 }
