@@ -543,12 +543,12 @@ class LanguageRegistry:
                 lang = self._languages[name]
                 if "enabled" in settings:
                     if not isinstance(settings["enabled"], bool):
-                        raise ValueError(f"enabled setting must be a boolean")
+                        raise ValueError(f"enabled setting must be a boolean, got {type(settings['enabled'])}")
                     lang.enabled = settings["enabled"]
                 if "priority" in settings:
                     priority = settings["priority"]
                     if not isinstance(priority, (int, float)):
-                        raise ValueError(f"priority setting must be a number")
+                        raise ValueError(f"priority setting must be a number, got {type(priority)}")
                     lang.priority = int(priority)
                     priority_changed = True
         
