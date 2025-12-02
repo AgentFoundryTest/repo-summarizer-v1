@@ -1,7 +1,13 @@
 {
   "header_file": ".github/af-config/LICENSE_HEADER",
   "include_extensions": [
-    ".py"
+    ".py",
+    ".c",
+    ".cpp",
+    ".h",
+    ".java",
+    ".rs",
+    ".cs"
   ],
   "exclude_paths": [
     ".git",
