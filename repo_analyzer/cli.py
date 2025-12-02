@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from repo_analyzer import __version__
 from repo_analyzer.tree_report import generate_tree_report, TreeReportError
 from repo_analyzer.file_summary import generate_file_summaries, FileSummaryError
 from repo_analyzer.dependency_graph import generate_dependency_report, DependencyGraphError
@@ -223,7 +224,7 @@ def write_summary_template(output_dir: Path, dry_run: bool = False) -> None:
     """
     summary_path = output_dir / "SUMMARY.md"
     
-    content = """# Repository Analysis Summary
+    content = f"""# Repository Analysis Summary
 
 This document provides an overview of the repository analysis results, showcasing the enriched summaries and dependency classification features of the Repository Analyzer tool.
 
@@ -317,7 +318,7 @@ For migration information and detailed schema documentation, see the project REA
 
 ## Analysis Metadata
 
-- **Tool Version**: Repository Analyzer v0.2.1
+- **Tool Version**: Repository Analyzer v{__version__}
 - **Configuration**: See repo-analyzer.config.json
 - **Schema Version**: 2.0 (backward compatible with v1.0 consumers)
 - **Timestamp**: Generated on repository scan
