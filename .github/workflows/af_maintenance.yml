@@ -115,10 +115,10 @@ jobs:
           license-header apply \
             --config .github/af-config/license-header.config.json
 
-      - name: Run repo analyzer
-        run: |
-          repo-analyzer scan \
-            --config .github/af-config/repo-analyzer.config.json
+      # - name: Run repo analyzer
+      #   run: |
+      #     repo-analyzer scan \
+      #       --config .github/af-config/repo-analyzer.config.json
 
       - name: Commit changes (if any)
         run: |
