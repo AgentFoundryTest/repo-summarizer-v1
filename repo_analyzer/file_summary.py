@@ -324,7 +324,11 @@ def _is_interface_name(name: str) -> bool:
     Check if a name follows interface naming conventions.
     
     Returns True for names that start with 'I' followed by an uppercase letter
-    (e.g., IUser, IFoo) but not lowercase (e.g., image, input).
+    and then a lowercase letter (e.g., IUser, IFoo) to avoid false positives
+    like IFrame, IPhone, or ICloud where 'I' is part of the word itself.
+    
+    Additionally, we exclude common false positives that match the pattern
+    but are well-known to be real words (IFrame, ICloud, etc.)
     
     Args:
         name: The file name (stem, without extension)
@@ -332,7 +336,16 @@ def _is_interface_name(name: str) -> bool:
     Returns:
         True if the name follows interface conventions, False otherwise
     """
-    return name.startswith('I') and len(name) > 1 and name[1].isupper()
+    # Known false positives that shouldn't be treated as interfaces
+    false_positives = {'IFrame', 'IPhone', 'ICloud', 'IPad', 'IPod', 'IWatch'}
+    
+    if name in false_positives:
+        return False
+    
+    # Pattern: I + Uppercase + Lowercase (e.g., IUser, IFoo)
+    # This helps avoid: IFrame (IFr), IPhone (IPh), ICloud (ICl)
+    return (name.startswith('I') and len(name) > 2 and 
+            name[1].isupper() and name[2].islower())
 
 
 def _apply_language_specific_heuristics(
@@ -411,18 +424,20 @@ def _apply_language_specific_heuristics(
     
     # Go specific heuristics
     elif language == 'Go':
-        if name_lower == 'main':
+        # Check directory structure first (more specific than filename)
+        if 'cmd' in path_parts:
+            return "Go command-line application"
+        elif 'pkg' in path_parts:
+            return "Go library package"
+        elif 'internal' in path_parts:
+            return "Go internal package (not for external use)"
+        # Then check filename patterns
+        elif name_lower == 'main':
             return "Go program entry point (main package)"
         elif name_lower.endswith('_test'):
             return "Go test file"
         elif name_lower.endswith('_internal'):
             return "Go internal implementation (unexported)"
-        elif path_parts and path_parts[0] == 'cmd':
-            return "Go command-line application"
-        elif path_parts and path_parts[0] == 'pkg':
-            return "Go library package"
-        elif path_parts and path_parts[0] == 'internal':
-            return "Go internal package (not for external use)"
         elif 'proto' in name_lower or extension == '.pb.go':
             return "Go protocol buffer definitions"
         else:
@@ -532,7 +547,10 @@ def _apply_language_specific_heuristics(
     
     # CSS specific heuristics
     elif language == 'CSS':
-        if name_lower in ['style', 'styles', 'main', 'app']:
+        # Check component styles first (more specific)
+        if 'component' in name_lower or path_parts and 'components' in [p.lower() for p in path_parts]:
+            return "CSS component styles"
+        elif name_lower in ['style', 'styles', 'main', 'app']:
             return "CSS main stylesheet"
         elif 'theme' in name_lower or 'themes' in name_lower:
             return "CSS theme definitions"
@@ -544,12 +562,11 @@ def _apply_language_specific_heuristics(
             return "CSS responsive design rules"
         elif 'print' in name_lower:
             return "CSS print stylesheet"
-        elif 'component' in name_lower or path_parts and 'components' in [p.lower() for p in path_parts]:
-            return "CSS component styles"
         elif 'util' in name_lower or 'helper' in name_lower:
             return "CSS utility classes"
-        # Minified CSS: check if name ends with 'min' (e.g., stylemin.css, bootstrap-min.css)
-        elif name_lower.endswith('min'):
+        # Minified CSS: check for .min or -min patterns (e.g., style.min.css, bootstrap-min.css)
+        # Avoid false positives like admin.css, determine.css
+        elif '.min' in name_lower or '-min' in name_lower:
             return "CSS minified stylesheet"
         else:
             return "CSS stylesheet"

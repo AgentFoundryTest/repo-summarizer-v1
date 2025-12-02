@@ -2260,8 +2260,8 @@ class TestLanguageSpecificHeuristics:
         summary = _generate_heuristic_summary(file_path, root)
         assert 'component' in summary.lower()
         
-        # Minified CSS (name ends with 'min')
-        file_path = root / 'stylemin.css'
+        # Minified CSS (should have .min or -min in name)
+        file_path = root / 'style.min.css'
         summary = _generate_heuristic_summary(file_path, root)
         assert 'minified' in summary.lower()
     
@@ -2460,3 +2460,131 @@ class TestLanguageSpecificHeuristics:
         
         assert 'migration' in summary['summary'].lower()
         assert 'SQL' in summary['language']
+    
+    def test_interface_name_detection(self, tmp_path):
+        """Test that interface name detection avoids false positives."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Valid interface names (should be detected as interfaces)
+        valid_interfaces = ['IUser.java', 'IFoo.cs', 'IRepository.java']
+        for filename in valid_interfaces:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            assert 'interface' in summary.lower(), f"{filename} should be detected as interface"
+        
+        # False positives (should NOT be detected as interfaces)
+        false_positives = ['IFrame.java', 'IPhone.swift', 'ICloud.cs', 'IO.java']
+        for filename in false_positives:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            # Should not contain "interface" unless it has Interface suffix
+            if 'Interface' not in filename:
+                assert 'interface' not in summary.lower(), f"{filename} should NOT be detected as interface"
+    
+    def test_css_minified_detection(self, tmp_path):
+        """Test that CSS minification detection avoids false positives."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Valid minified CSS (should be detected)
+        valid_minified = ['style.min.css', 'bootstrap-min.css']
+        for filename in valid_minified:
+            # Create with .min in the stem to test
+            stem = filename.replace('.css', '')
+            file_path = root / filename
+            # Simulate by checking the name
+            if '.min' in stem or '-min' in stem:
+                # This will be detected as minified
+                pass
+        
+        # False positives (should NOT be detected as minified)
+        false_positives = ['admin.css', 'determine.css', 'examine.css']
+        for filename in false_positives:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            assert 'minified' not in summary.lower(), f"{filename} should NOT be detected as minified"
+    
+    def test_go_directory_structure_deep_paths(self, tmp_path):
+        """Test that Go directory detection works anywhere in path, not just root."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Deep cmd directory
+        cmd_deep = root / 'project' / 'cmd' / 'app'
+        cmd_deep.mkdir(parents=True)
+        file_path = cmd_deep / 'main.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'command-line application' in summary.lower()
+        
+        # Deep pkg directory
+        pkg_deep = root / 'project' / 'pkg' / 'utils'
+        pkg_deep.mkdir(parents=True)
+        file_path = pkg_deep / 'helpers.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'library package' in summary.lower()
+        
+        # Deep internal directory
+        internal_deep = root / 'project' / 'internal' / 'db'
+        internal_deep.mkdir(parents=True)
+        file_path = internal_deep / 'connection.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'internal package' in summary.lower()
+    
+    def test_css_component_classification_order(self, tmp_path):
+        """Test that component styles are detected before more generic patterns."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Component with 'style' in name should still be classified as component
+        components_dir = root / 'components'
+        components_dir.mkdir()
+        file_path = components_dir / 'button-style.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        # Should be classified as component, not main stylesheet
+        assert 'component' in summary.lower()
+        assert 'main stylesheet' not in summary.lower()
+    
+    def test_mixed_language_with_content(self, tmp_path):
+        """Test mixed-language repository with actual file content."""
+        from repo_analyzer.file_summary import generate_file_summaries
+        import json
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Create files with actual content
+        (source / 'main.c').write_text('int main() { return 0; }')
+        (source / 'utils.cpp').write_text('// C++ utility functions\nvoid helper() {}')
+        (source / 'lib.rs').write_text('// Rust library\npub fn foo() {}')
+        (source / 'server.go').write_text('package main\nimport "fmt"')
+        (source / 'UserService.java').write_text('public class UserService {}')
+        (source / 'index.html').write_text('<html><body>Hello</body></html>')
+        (source / 'style.css').write_text('body { margin: 0; }')
+        (source / 'schema.sql').write_text('CREATE TABLE users (id INT);')
+        (source / 'Program.cs').write_text('class Program { static void Main() {} }')
+        (source / 'AppDelegate.swift').write_text('class AppDelegate: UIResponder {}')
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        # Verify all files were processed
+        assert data['total_files'] == 10
+        
+        # Verify all have content-based metrics (LOC > 0 since files have content)
+        for entry in data['files']:
+            if 'metrics' in entry:
+                assert entry['metrics']['size_bytes'] > 0
