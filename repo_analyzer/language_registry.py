@@ -93,93 +93,93 @@ class LanguageRegistry:
             priority=10
         ))
         
-        # C - basic support
+        # C - basic support with dependency scanning
         self.register(LanguageCapability(
             name="C",
             extensions={".c"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # C++ - basic support, higher priority than C for .h files
+        # C++ - basic support with dependency scanning, higher priority than C for .h files
         self.register(LanguageCapability(
             name="C++",
             extensions={".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=9
         ))
         
-        # C# - basic support
+        # C# - basic support with dependency scanning
         self.register(LanguageCapability(
             name="C#",
             extensions={".cs"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # Rust - basic support
+        # Rust - basic support with dependency scanning
         self.register(LanguageCapability(
             name="Rust",
             extensions={".rs"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # Go - basic support
+        # Go - basic support with dependency scanning
         self.register(LanguageCapability(
             name="Go",
             extensions={".go"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # Java - basic support
+        # Java - basic support with dependency scanning
         self.register(LanguageCapability(
             name="Java",
             extensions={".java"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # Swift - basic support
+        # Swift - basic support with dependency scanning
         self.register(LanguageCapability(
             name="Swift",
             extensions={".swift"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=8
         ))
         
-        # HTML - basic support
+        # HTML - basic support with dependency scanning
         self.register(LanguageCapability(
             name="HTML",
             extensions={".html", ".htm"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=5
         ))
         
-        # CSS - basic support
+        # CSS - basic support with dependency scanning
         self.register(LanguageCapability(
             name="CSS",
             extensions={".css"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=5
         ))
         
-        # SQL - basic support
+        # SQL - basic support with dependency scanning
         self.register(LanguageCapability(
             name="SQL",
             extensions={".sql"},
             has_structure_parser=False,
-            has_dependency_scanner=False,
+            has_dependency_scanner=True,
             priority=5
         ))
         

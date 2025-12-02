@@ -39,8 +39,8 @@
       "summary": "Python module for dependency graph",
       "summary_text": "Python module for dependency graph",
       "metrics": {
-        "size_bytes": 34403,
-        "loc": 603,
+        "size_bytes": 60236,
+        "loc": 1117,
         "todo_count": 0
       }
     },
@@ -53,8 +53,8 @@
       "summary": "Python module for file summary",
       "summary_text": "Python module for file summary",
       "metrics": {
-        "size_bytes": 46705,
-        "loc": 866,
+        "size_bytes": 48260,
+        "loc": 884,
         "todo_count": 8
       }
     },
@@ -67,7 +67,7 @@
       "summary": "Python module for language registry",
       "summary_text": "Python module for language registry",
       "metrics": {
-        "size_bytes": 19732,
+        "size_bytes": 19972,
         "loc": 492,
         "todo_count": 0
       }
@@ -81,8 +81,8 @@
       "summary": "Python module for stdlib classification",
       "summary_text": "Python module for stdlib classification",
       "metrics": {
-        "size_bytes": 8730,
-        "loc": 138,
+        "size_bytes": 22316,
+        "loc": 387,
         "todo_count": 0
       }
     },
@@ -109,8 +109,8 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 44989,
-        "loc": 976,
+        "size_bytes": 68841,
+        "loc": 1555,
         "todo_count": 0
       }
     },
@@ -123,8 +123,8 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 88178,
-        "loc": 1703,
+        "size_bytes": 94672,
+        "loc": 1798,
         "todo_count": 18
       }
     },
@@ -151,8 +151,8 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 11927,
-        "loc": 190,
+        "size_bytes": 18123,
+        "loc": 296,
         "todo_count": 0
       }
     },

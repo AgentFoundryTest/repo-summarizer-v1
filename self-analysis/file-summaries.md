@@ -29,8 +29,8 @@ Total files: 12
 **Role:** implementation  
 **Role Justification:** general implementation file (default classification)  
 **Summary:** Python module for dependency graph  
-**Size:** 33.60 KB  
-**LOC:** 603  
+**Size:** 58.82 KB  
+**LOC:** 1117  
 **TODOs/FIXMEs:** 0  
 
 ## repo_analyzer/file_summary.py
@@ -38,8 +38,8 @@ Total files: 12
 **Role:** implementation  
 **Role Justification:** general implementation file (default classification)  
 **Summary:** Python module for file summary  
-**Size:** 45.61 KB  
-**LOC:** 866  
+**Size:** 47.13 KB  
+**LOC:** 884  
 **TODOs/FIXMEs:** 8  
 
 ## repo_analyzer/language_registry.py
@@ -47,7 +47,7 @@ Total files: 12
 **Role:** implementation  
 **Role Justification:** general implementation file (default classification)  
 **Summary:** Python module for language registry  
-**Size:** 19.27 KB  
+**Size:** 19.50 KB  
 **LOC:** 492  
 **TODOs/FIXMEs:** 0  
 
@@ -56,8 +56,8 @@ Total files: 12
 **Role:** implementation  
 **Role Justification:** general implementation file (default classification)  
 **Summary:** Python module for stdlib classification  
-**Size:** 8.53 KB  
-**LOC:** 138  
+**Size:** 21.79 KB  
+**LOC:** 387  
 **TODOs/FIXMEs:** 0  
 
 ## repo_analyzer/tree_report.py
@@ -74,8 +74,8 @@ Total files: 12
 **Role:** test  
 **Role Justification:** filename starts with 'test_'  
 **Summary:** Python test file (role: test)  
-**Size:** 43.93 KB  
-**LOC:** 976  
+**Size:** 67.23 KB  
+**LOC:** 1555  
 **TODOs/FIXMEs:** 0  
 
 ## tests/test_file_summary.py
@@ -83,8 +83,8 @@ Total files: 12
 **Role:** test  
 **Role Justification:** filename starts with 'test_'  
 **Summary:** Python test file (role: test)  
-**Size:** 86.11 KB  
-**LOC:** 1703  
+**Size:** 92.45 KB  
+**LOC:** 1798  
 **TODOs/FIXMEs:** 18  
 
 ## tests/test_language_registry.py
@@ -101,8 +101,8 @@ Total files: 12
 **Role:** test  
 **Role Justification:** filename starts with 'test_'  
 **Summary:** Python test file (role: test)  
-**Size:** 11.65 KB  
-**LOC:** 190  
+**Size:** 17.70 KB  
+**LOC:** 296  
 **TODOs/FIXMEs:** 0  
 
 ## tests/test_tree_report.py

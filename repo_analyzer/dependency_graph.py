@@ -5,9 +5,21 @@
 """
 Repository dependency graph generator.
 
-Analyzes import statements in Python and JavaScript/TypeScript files to build
-an intra-repository dependency graph, producing both JSON and Markdown outputs.
-Also captures and classifies external dependencies (stdlib vs third-party).
+Analyzes import statements across multiple languages to build an intra-repository 
+dependency graph, producing both JSON and Markdown outputs. Also captures and 
+classifies external dependencies (stdlib vs third-party).
+
+Supported languages:
+- Python: import/from statements
+- JavaScript/TypeScript: import/require/dynamic import
+- C/C++: #include directives
+- Rust: use/mod statements
+- Go: import statements
+- Java: import statements
+- C#: using statements
+- Swift: import statements
+- HTML/CSS: href/src/url() references (local files only)
+- SQL: vendor-specific include statements
 """
 
 import json
@@ -21,6 +33,53 @@ from repo_analyzer.stdlib_classification import classify_import
 class DependencyGraphError(Exception):
     """Raised when dependency graph generation fails."""
     pass
+
+
+def _remove_c_style_comments(content: str) -> str:
+    """
+    Remove C-style comments (// and /* */) from content.
+    
+    Args:
+        content: Source code content
+    
+    Returns:
+        Content with comments removed
+    """
+    # Remove multi-line comments /* ... */
+    content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+    
+    # Remove single-line comments //
+    lines = []
+    for line in content.split('\n'):
+        if '//' in line:
+            # Simple split - doesn't handle // in strings perfectly but good enough
+            line = line.split('//')[0]
+        lines.append(line)
+    
+    return '\n'.join(lines)
+
+
+def _remove_sql_comments(content: str) -> str:
+    """
+    Remove SQL-style comments (-- and /* */) from content.
+    
+    Args:
+        content: SQL code content
+    
+    Returns:
+        Content with comments removed
+    """
+    # Remove multi-line comments /* ... */
+    content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+    
+    # Remove single-line comments --
+    lines = []
+    for line in content.split('\n'):
+        if '--' in line:
+            line = line.split('--')[0]
+        lines.append(line)
+    
+    return '\n'.join(lines)
 
 
 def _parse_python_imports(content: str, file_path: Path) -> List[str]:
@@ -292,6 +351,304 @@ def _parse_js_imports(content: str, file_path: Path) -> List[str]:
     return imports
 
 
+def _parse_c_cpp_includes(content: str, file_path: Path) -> List[str]:
+    """
+    Parse C/C++ #include statements to extract included headers.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of included header paths
+    """
+    includes = []
+    
+    # Remove comments to avoid false positives
+    content = _remove_c_style_comments(content)
+    
+    # Match #include "header.h" or #include <header.h>
+    # Pattern captures both quoted includes ("...") and angle-bracket includes (<...>)
+    # The character class [<"] matches either < or ", and [>"] matches either > or "
+    include_pattern = r'^\s*#\s*include\s*[<"]([^>"]+)[>"]'
+    
+    for line in content.split('\n'):
+        match = re.match(include_pattern, line)
+        if match:
+            header = match.group(1)
+            includes.append(header)
+    
+    return includes
+
+
+def _parse_rust_imports(content: str, file_path: Path) -> List[str]:
+    """
+    Parse Rust use and mod statements to extract imported modules.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of imported module paths
+    """
+    imports = []
+    
+    # Remove comments
+    content = _remove_c_style_comments(content)
+    
+    # Match 'use module::path;' statements
+    use_pattern = r'^\s*use\s+([\w:]+)'
+    
+    # Match 'mod module;' statements
+    mod_pattern = r'^\s*mod\s+([\w]+)'
+    
+    for line in content.split('\n'):
+        # Check for use statements
+        match = re.match(use_pattern, line)
+        if match:
+            module = match.group(1)
+            imports.append(module)
+            continue
+        
+        # Check for mod statements
+        match = re.match(mod_pattern, line)
+        if match:
+            module = match.group(1)
+            imports.append(module)
+    
+    return imports
+
+
+def _parse_go_imports(content: str, file_path: Path) -> List[str]:
+    """
+    Parse Go import statements to extract imported packages.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of imported package paths
+    """
+    imports = []
+    
+    # Remove comments
+    content = _remove_c_style_comments(content)
+    
+    # Match 'import "package"' or 'import alias "package"'
+    # Alias can be a word or dot (.)
+    single_import_pattern = r'^\s*import\s+(?:[\w.]+\s+)?"([^"]+)"'
+    
+    # Match multi-line imports: import ( ... )
+    multi_import_start = r'^\s*import\s+\('
+    import_line_pattern = r'^\s*(?:[\w.]+\s+)?"([^"]+)"'
+    
+    in_import_block = False
+    for line in content.split('\n'):
+        # Check for single-line import
+        if not in_import_block:
+            match = re.match(single_import_pattern, line)
+            if match:
+                package = match.group(1)
+                imports.append(package)
+                continue
+            
+            # Check for start of multi-line import block
+            if re.match(multi_import_start, line):
+                in_import_block = True
+                continue
+        else:
+            # We're inside an import block
+            if ')' in line:
+                in_import_block = False
+                continue
+            
+            match = re.match(import_line_pattern, line)
+            if match:
+                package = match.group(1)
+                imports.append(package)
+    
+    return imports
+
+
+def _parse_java_imports(content: str, file_path: Path) -> List[str]:
+    """
+    Parse Java import statements to extract imported classes.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of imported class paths
+    """
+    imports = []
+    
+    # Remove comments
+    content = _remove_c_style_comments(content)
+    
+    # Match 'import package.Class;' or 'import static package.Class.method;'
+    import_pattern = r'^\s*import\s+(?:static\s+)?([\w.]+)'
+    
+    for line in content.split('\n'):
+        match = re.match(import_pattern, line)
+        if match:
+            class_path = match.group(1)
+            imports.append(class_path)
+    
+    return imports
+
+
+def _parse_csharp_imports(content: str, file_path: Path) -> List[str]:
+    """
+    Parse C# using statements to extract imported namespaces.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of imported namespace paths
+    """
+    imports = []
+    
+    # Remove comments
+    content = _remove_c_style_comments(content)
+    
+    # Match 'using Namespace;' or 'using Alias = Namespace;'
+    using_pattern = r'^\s*using\s+(?:[\w]+\s*=\s*)?([\w.]+)'
+    
+    for line in content.split('\n'):
+        match = re.match(using_pattern, line)
+        if match:
+            namespace = match.group(1)
+            imports.append(namespace)
+    
+    return imports
+
+
+def _parse_swift_imports(content: str, file_path: Path) -> List[str]:
+    """
+    Parse Swift import statements to extract imported modules.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of imported module paths
+    """
+    imports = []
+    
+    # Remove comments
+    content = _remove_c_style_comments(content)
+    
+    # Match 'import Module' or 'import kind Module' (e.g., 'import struct Foundation.URL')
+    import_pattern = r'^\s*import\s+(?:(?:struct|class|enum|protocol|typealias|func|let|var)\s+)?([\w.]+)'
+    
+    for line in content.split('\n'):
+        match = re.match(import_pattern, line)
+        if match:
+            module = match.group(1)
+            imports.append(module)
+    
+    return imports
+
+
+def _parse_html_css_references(content: str, file_path: Path) -> List[str]:
+    """
+    Parse HTML/CSS for local asset references (href, src attributes).
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of local file references
+    """
+    references = []
+    
+    # CDN domains to filter out - expanded list
+    CDN_DOMAINS = [
+        'cdn.', 'unpkg.', 'jsdelivr.', 'cloudflare.',
+        'cdnjs.', 'rawgit.', 'gitcdn.', 'staticfile.',
+        'bootcdn.', 'maxcdn.', 'yandex.', 'ajax.googleapis.',
+        'code.jquery.', 'stackpath.bootstrapcdn.'
+    ]
+    
+    # For HTML: match href and src attributes with local paths
+    # Pattern captures href="..." and src="..."
+    html_ref_pattern = r'(?:href|src)\s*=\s*["\']([^"\']+)["\']'
+    
+    # For CSS: match url(...) references
+    css_ref_pattern = r'url\s*\(\s*["\']?([^"\'()]+)["\']?\s*\)'
+    
+    for match in re.finditer(html_ref_pattern, content, re.IGNORECASE):
+        ref = match.group(1)
+        # Skip absolute URLs (http://, https://, //, etc.)
+        if not ref.startswith(('http://', 'https://', '//', 'data:', 'mailto:', 'tel:', '#', 'javascript:')):
+            # Skip CDN and external references - check if any CDN domain is in the ref
+            if not any(domain in ref.lower() for domain in CDN_DOMAINS):
+                references.append(ref)
+    
+    for match in re.finditer(css_ref_pattern, content, re.IGNORECASE):
+        ref = match.group(1)
+        # Skip absolute URLs
+        if not ref.startswith(('http://', 'https://', '//', 'data:')):
+            if not any(domain in ref.lower() for domain in CDN_DOMAINS):
+                references.append(ref)
+    
+    return references
+
+
+def _parse_sql_includes(content: str, file_path: Path) -> List[str]:
+    """
+    Parse SQL for include/import statements and schema references.
+    
+    Args:
+        content: File content as string
+        file_path: Path to the file being parsed
+    
+    Returns:
+        List of included file paths and schema references
+    """
+    includes = []
+    
+    # Remove SQL comments
+    content = _remove_sql_comments(content)
+    
+    # Match various SQL include patterns (vendor-specific)
+    # PostgreSQL: \i filename or \include filename
+    psql_include_pattern = r'^\s*\\(?:i|include)\s+([^\s;]+)'
+    
+    # MySQL: SOURCE filename or \. filename
+    mysql_include_pattern = r'^\s*(?:SOURCE|\\\.)\s+([^\s;]+)'
+    
+    # Generic: EXEC or EXECUTE with file path (SQL Server)
+    exec_pattern = r'^\s*(?:EXEC|EXECUTE)\s+.*["\']([^"\']+\.sql)["\']'
+    
+    for line in content.split('\n'):
+        # Check PostgreSQL includes
+        match = re.match(psql_include_pattern, line, re.IGNORECASE)
+        if match:
+            includes.append(match.group(1))
+            continue
+        
+        # Check MySQL includes
+        match = re.match(mysql_include_pattern, line, re.IGNORECASE)
+        if match:
+            includes.append(match.group(1))
+            continue
+        
+        # Check SQL Server exec patterns
+        match = re.match(exec_pattern, line, re.IGNORECASE)
+        if match:
+            includes.append(match.group(1))
+    
+    return includes
+
+
 def _resolve_python_import(
     import_path: str,
     source_file: Path,
@@ -487,6 +844,223 @@ def _resolve_js_import(
     return None
 
 
+def _resolve_c_cpp_include(
+    include_path: str,
+    source_file: Path,
+    repo_root: Path
+) -> Optional[Path]:
+    """
+    Resolve a C/C++ include to an actual file path within the repository.
+    
+    Args:
+        include_path: Include string (e.g., 'myheader.h', 'subdir/header.hpp')
+        source_file: Path to the file containing the include
+        repo_root: Repository root directory
+    
+    Returns:
+        Resolved Path or None if not found/external
+    """
+    # Skip system headers (angle brackets typically indicate system headers,
+    # but we only have the path here, not the bracket type)
+    # System headers are typically in standard locations and won't resolve in repo
+    
+    # Get the directory containing the source file
+    source_dir = source_file.parent
+    
+    # Try relative to source file directory first (most common for quoted includes)
+    relative_path = source_dir / include_path
+    if relative_path.exists() and relative_path.is_file():
+        try:
+            relative_path.relative_to(repo_root)
+            return relative_path
+        except ValueError:
+            return None
+    
+    # Try relative to repo root (for project-wide includes)
+    repo_path = repo_root / include_path
+    if repo_path.exists() and repo_path.is_file():
+        return repo_path
+    
+    # Try common include directories
+    for include_dir in ['include', 'src', 'lib', 'inc']:
+        candidate = repo_root / include_dir / include_path
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    
+    return None
+
+
+def _resolve_rust_import(
+    import_path: str,
+    source_file: Path,
+    repo_root: Path
+) -> Optional[Path]:
+    """
+    Resolve a Rust use/mod statement to an actual file path within the repository.
+    
+    Args:
+        import_path: Import string (e.g., 'crate::utils', 'std::io', 'mod_name')
+        source_file: Path to the file containing the import
+        repo_root: Repository root directory
+    
+    Returns:
+        Resolved Path or None if not found/external
+    """
+    # Skip standard library and external crates
+    if import_path.startswith('std::') or import_path.startswith('core::') or import_path.startswith('alloc::'):
+        return None
+    
+    # Handle crate-relative imports (crate::)
+    if import_path.startswith('crate::'):
+        # Remove 'crate::' prefix and resolve from src/lib.rs or src/main.rs
+        module_path = import_path[7:]  # Remove 'crate::'
+        parts = module_path.split('::')
+        
+        # Try src/lib.rs location
+        for root_file in ['src/lib.rs', 'src/main.rs']:
+            root_path = repo_root / root_file
+            if root_path.exists():
+                # Navigate through module hierarchy
+                current = repo_root / 'src'
+                for part in parts:
+                    # Try as file
+                    candidate = current / f'{part}.rs'
+                    if candidate.exists():
+                        return candidate
+                    # Try as directory with mod.rs
+                    candidate = current / part / 'mod.rs'
+                    if candidate.exists():
+                        return candidate
+                    current = current / part
+        
+        return None
+    
+    # Handle self:: and super::
+    if import_path.startswith('self::') or import_path.startswith('super::'):
+        return None
+    
+    # Handle simple mod statements (same directory)
+    if '::' not in import_path:
+        source_dir = source_file.parent
+        # Try as sibling file
+        candidate = source_dir / f'{import_path}.rs'
+        if candidate.exists():
+            return candidate
+        # Try as subdirectory with mod.rs
+        candidate = source_dir / import_path / 'mod.rs'
+        if candidate.exists():
+            return candidate
+    
+    return None
+
+
+def _resolve_html_css_reference(
+    ref_path: str,
+    source_file: Path,
+    repo_root: Path
+) -> Optional[Path]:
+    """
+    Resolve an HTML/CSS asset reference to an actual file path within the repository.
+    
+    Args:
+        ref_path: Reference string (e.g., './style.css', '../images/logo.png')
+        source_file: Path to the file containing the reference
+        repo_root: Repository root directory
+    
+    Returns:
+        Resolved Path or None if not found/external
+    """
+    # Validate input - reject potentially malicious paths
+    if '..' in ref_path.split('/'):
+        # Allow ../ for relative navigation, but be cautious
+        pass
+    
+    # Reject null bytes and other dangerous characters
+    if '\x00' in ref_path or '\n' in ref_path or '\r' in ref_path:
+        return None
+    
+    # Get the directory containing the source file
+    source_dir = source_file.parent
+    
+    # Normalize repo_root to absolute path
+    repo_root = repo_root.resolve()
+    
+    # Resolve relative path
+    if ref_path.startswith('./') or ref_path.startswith('../'):
+        try:
+            resolved = (source_dir / ref_path).resolve(strict=False)
+            # SECURITY: Ensure resolved path is within repository
+            resolved.relative_to(repo_root)
+            if resolved.exists() and resolved.is_file():
+                return resolved
+        except (ValueError, OSError):
+            return None
+    elif not ref_path.startswith('/'):
+        # Relative path without ./ prefix
+        try:
+            resolved = (source_dir / ref_path).resolve(strict=False)
+            # SECURITY: Ensure resolved path is within repository
+            resolved.relative_to(repo_root)
+            if resolved.exists() and resolved.is_file():
+                return resolved
+        except (ValueError, OSError):
+            return None
+    elif ref_path.startswith('/'):
+        # Absolute path from repo root
+        try:
+            resolved = (repo_root / ref_path.lstrip('/')).resolve(strict=False)
+            # SECURITY: Ensure resolved path is within repository
+            resolved.relative_to(repo_root)
+            if resolved.exists() and resolved.is_file():
+                return resolved
+        except (ValueError, OSError):
+            return None
+    
+    return None
+
+
+def _resolve_sql_include(
+    include_path: str,
+    source_file: Path,
+    repo_root: Path
+) -> Optional[Path]:
+    """
+    Resolve a SQL include/import to an actual file path within the repository.
+    
+    Args:
+        include_path: Include string (e.g., 'schema.sql', 'migrations/001.sql')
+        source_file: Path to the file containing the include
+        repo_root: Repository root directory
+    
+    Returns:
+        Resolved Path or None if not found/external
+    """
+    # Get the directory containing the source file
+    source_dir = source_file.parent
+    
+    # Try relative to source file directory
+    relative_path = source_dir / include_path
+    if relative_path.exists() and relative_path.is_file():
+        try:
+            relative_path.relative_to(repo_root)
+            return relative_path
+        except ValueError:
+            return None
+    
+    # Try relative to repo root
+    repo_path = repo_root / include_path
+    if repo_path.exists() and repo_path.is_file():
+        return repo_path
+    
+    # Try common SQL directories
+    for sql_dir in ['sql', 'migrations', 'schemas', 'db']:
+        candidate = repo_root / sql_dir / include_path
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    
+    return None
+
+
 def _scan_file_dependencies(
     file_path: Path,
     repo_root: Path
@@ -590,6 +1164,153 @@ def _scan_file_dependencies_with_external(
                     elif dep_type == 'third-party':
                         if import_path not in external_deps['third-party']:
                             external_deps['third-party'].append(import_path)
+    
+    elif suffix in ['.c', '.h']:
+        language = 'C'
+        includes = _parse_c_cpp_includes(content, file_path)
+        for include_path in includes:
+            resolved = _resolve_c_cpp_include(include_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            else:
+                # Classify as external
+                dep_type = classify_import(include_path, language)
+                if dep_type == 'stdlib':
+                    if include_path not in external_deps['stdlib']:
+                        external_deps['stdlib'].append(include_path)
+                elif dep_type == 'third-party':
+                    if include_path not in external_deps['third-party']:
+                        external_deps['third-party'].append(include_path)
+    
+    elif suffix in ['.cpp', '.cc', '.cxx', '.hpp', '.hh', '.hxx']:
+        language = 'C++'
+        includes = _parse_c_cpp_includes(content, file_path)
+        for include_path in includes:
+            resolved = _resolve_c_cpp_include(include_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            else:
+                # Classify as external
+                dep_type = classify_import(include_path, language)
+                if dep_type == 'stdlib':
+                    if include_path not in external_deps['stdlib']:
+                        external_deps['stdlib'].append(include_path)
+                elif dep_type == 'third-party':
+                    if include_path not in external_deps['third-party']:
+                        external_deps['third-party'].append(include_path)
+    
+    elif suffix == '.rs':
+        language = 'Rust'
+        imports = _parse_rust_imports(content, file_path)
+        for import_path in imports:
+            resolved = _resolve_rust_import(import_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            else:
+                # Classify as external (skip crate-relative imports)
+                if not import_path.startswith('crate::') and not import_path.startswith('self::') and not import_path.startswith('super::'):
+                    dep_type = classify_import(import_path, language)
+                    if dep_type == 'stdlib':
+                        if import_path not in external_deps['stdlib']:
+                            external_deps['stdlib'].append(import_path)
+                    elif dep_type == 'third-party':
+                        if import_path not in external_deps['third-party']:
+                            external_deps['third-party'].append(import_path)
+    
+    elif suffix == '.go':
+        language = 'Go'
+        imports = _parse_go_imports(content, file_path)
+        for import_path in imports:
+            # Go imports are package paths, not file paths
+            # Intra-repo resolution is not straightforward without build context
+            # For now, classify all as external
+            dep_type = classify_import(import_path, language)
+            if dep_type == 'stdlib':
+                if import_path not in external_deps['stdlib']:
+                    external_deps['stdlib'].append(import_path)
+            elif dep_type == 'third-party':
+                if import_path not in external_deps['third-party']:
+                    external_deps['third-party'].append(import_path)
+    
+    elif suffix == '.java':
+        language = 'Java'
+        imports = _parse_java_imports(content, file_path)
+        for import_path in imports:
+            # Java imports are class paths, not file paths
+            # Intra-repo resolution would require mapping packages to directories
+            # For now, classify all as external
+            dep_type = classify_import(import_path, language)
+            if dep_type == 'stdlib':
+                if import_path not in external_deps['stdlib']:
+                    external_deps['stdlib'].append(import_path)
+            elif dep_type == 'third-party':
+                if import_path not in external_deps['third-party']:
+                    external_deps['third-party'].append(import_path)
+    
+    elif suffix == '.cs':
+        language = 'C#'
+        imports = _parse_csharp_imports(content, file_path)
+        for import_path in imports:
+            # C# using statements reference namespaces, not file paths
+            # Intra-repo resolution is not straightforward
+            # For now, classify all as external
+            dep_type = classify_import(import_path, language)
+            if dep_type == 'stdlib':
+                if import_path not in external_deps['stdlib']:
+                    external_deps['stdlib'].append(import_path)
+            elif dep_type == 'third-party':
+                if import_path not in external_deps['third-party']:
+                    external_deps['third-party'].append(import_path)
+    
+    elif suffix == '.swift':
+        language = 'Swift'
+        imports = _parse_swift_imports(content, file_path)
+        for import_path in imports:
+            # Swift imports are module names, not file paths
+            # Intra-repo resolution would require understanding module structure
+            # For now, classify all as external
+            dep_type = classify_import(import_path, language)
+            if dep_type == 'stdlib':
+                if import_path not in external_deps['stdlib']:
+                    external_deps['stdlib'].append(import_path)
+            elif dep_type == 'third-party':
+                if import_path not in external_deps['third-party']:
+                    external_deps['third-party'].append(import_path)
+    
+    elif suffix in ['.html', '.htm']:
+        language = 'HTML'
+        references = _parse_html_css_references(content, file_path)
+        for ref_path in references:
+            resolved = _resolve_html_css_reference(ref_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            # HTML/CSS references don't have external package dependencies to classify
+    
+    elif suffix == '.css':
+        language = 'CSS'
+        references = _parse_html_css_references(content, file_path)
+        for ref_path in references:
+            resolved = _resolve_html_css_reference(ref_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            # CSS references don't have external package dependencies to classify
+    
+    elif suffix == '.sql':
+        language = 'SQL'
+        includes = _parse_sql_includes(content, file_path)
+        for include_path in includes:
+            resolved = _resolve_sql_include(include_path, file_path, repo_root)
+            if resolved:
+                dependencies.append(resolved)
+            else:
+                # Classify schema references
+                dep_type = classify_import(include_path, language)
+                if dep_type == 'stdlib':
+                    if include_path not in external_deps['stdlib']:
+                        external_deps['stdlib'].append(include_path)
+                elif dep_type == 'third-party':
+                    if include_path not in external_deps['third-party']:
+                        external_deps['third-party'].append(include_path)
     
     return dependencies, external_deps
 
@@ -764,7 +1485,8 @@ def generate_dependency_report(
         
         # Generate Markdown output
         markdown_lines = ["# Dependency Graph\n"]
-        markdown_lines.append("Intra-repository dependency analysis for Python and JavaScript/TypeScript files.\n")
+        markdown_lines.append("Multi-language intra-repository dependency analysis.\n")
+        markdown_lines.append("Supports Python, JavaScript/TypeScript, C/C++, Rust, Go, Java, C#, Swift, HTML/CSS, and SQL.\n")
         markdown_lines.append("Includes classification of external dependencies as stdlib vs third-party.\n")
         
         # Statistics

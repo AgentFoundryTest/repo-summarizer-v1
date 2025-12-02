@@ -1,6 +1,8 @@
 # Dependency Graph
 
-Intra-repository dependency analysis for Python and JavaScript/TypeScript files.
+Multi-language intra-repository dependency analysis.
+
+Supports Python, JavaScript/TypeScript, C/C++, Rust, Go, Java, C#, Swift, HTML/CSS, and SQL.
 
 Includes classification of external dependencies as stdlib vs third-party.
 

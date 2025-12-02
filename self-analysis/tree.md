@@ -10,6 +10,7 @@
 ├── .pytest_cache
   ├── v
     └── cache
+      ├── lastfailed
       └── nodeids
   ├── .gitignore
   ├── CACHEDIR.TAG

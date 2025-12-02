@@ -176,8 +176,7 @@ class TestClassifyImport:
         """Test classification for unsupported languages."""
         # Unsupported languages return unknown
         assert classify_import('some_module', 'Ruby') == 'unknown'
-        assert classify_import('some_module', 'Java') == 'unknown'
-        assert classify_import('some_module', 'Go') == 'unknown'
+        assert classify_import('some_module', 'Haskell') == 'unknown'
         assert classify_import('some_module', 'Unknown') == 'unknown'
 
 
@@ -218,6 +217,145 @@ class TestStdlibTables:
         """Test that tables contain entries."""
         assert len(PYTHON_STDLIB) > 100, "PYTHON_STDLIB should have 100+ modules"
         assert len(NODE_CORE_MODULES) > 20, "NODE_CORE_MODULES should have 20+ modules"
+
+
+class TestClassifyCCppImport:
+    """Tests for C/C++ include classification."""
+    
+    def test_c_stdlib_headers(self):
+        """Test classification of C standard library headers."""
+        assert classify_import('stdio.h', 'C') == 'stdlib'
+        assert classify_import('stdlib.h', 'C') == 'stdlib'
+        assert classify_import('string.h', 'C') == 'stdlib'
+        assert classify_import('math.h', 'C') == 'stdlib'
+    
+    def test_cpp_stdlib_headers(self):
+        """Test classification of C++ standard library headers."""
+        assert classify_import('iostream', 'C++') == 'stdlib'
+        assert classify_import('vector', 'C++') == 'stdlib'
+        assert classify_import('string', 'C++') == 'stdlib'
+        assert classify_import('algorithm', 'C++') == 'stdlib'
+        assert classify_import('memory', 'C++') == 'stdlib'
+    
+    def test_system_headers(self):
+        """Test classification of system headers."""
+        assert classify_import('unistd.h', 'C') == 'stdlib'
+        assert classify_import('sys/types.h', 'C') == 'stdlib'
+        assert classify_import('pthread.h', 'C') == 'stdlib'
+    
+    def test_third_party_headers(self):
+        """Test classification of third-party headers."""
+        assert classify_import('boost/shared_ptr.hpp', 'C++') == 'third-party'
+        assert classify_import('gtest/gtest.h', 'C++') == 'third-party'
+        assert classify_import('mylib.h', 'C') == 'third-party'
+
+
+class TestClassifyRustImport:
+    """Tests for Rust import classification."""
+    
+    def test_rust_stdlib_crates(self):
+        """Test classification of Rust standard library crates."""
+        assert classify_import('std', 'Rust') == 'stdlib'
+        assert classify_import('core', 'Rust') == 'stdlib'
+        assert classify_import('alloc', 'Rust') == 'stdlib'
+    
+    def test_rust_stdlib_modules(self):
+        """Test classification of Rust standard library modules."""
+        assert classify_import('std::io', 'Rust') == 'stdlib'
+        assert classify_import('std::fs', 'Rust') == 'stdlib'
+        assert classify_import('std::collections', 'Rust') == 'stdlib'
+    
+    def test_rust_third_party(self):
+        """Test classification of third-party Rust crates."""
+        assert classify_import('serde', 'Rust') == 'third-party'
+        assert classify_import('tokio', 'Rust') == 'third-party'
+        assert classify_import('clap', 'Rust') == 'third-party'
+    
+    def test_rust_crate_relative(self):
+        """Test classification of crate-relative imports."""
+        assert classify_import('crate::utils', 'Rust') == 'unknown'
+        assert classify_import('self::module', 'Rust') == 'unknown'
+        assert classify_import('super::parent', 'Rust') == 'unknown'
+
+
+class TestClassifyGoImport:
+    """Tests for Go import classification."""
+    
+    def test_go_stdlib_packages(self):
+        """Test classification of Go standard library packages."""
+        assert classify_import('fmt', 'Go') == 'stdlib'
+        assert classify_import('os', 'Go') == 'stdlib'
+        assert classify_import('net/http', 'Go') == 'stdlib'
+        assert classify_import('encoding/json', 'Go') == 'stdlib'
+    
+    def test_go_third_party(self):
+        """Test classification of third-party Go packages."""
+        assert classify_import('github.com/user/repo', 'Go') == 'third-party'
+        assert classify_import('golang.org/x/tools', 'Go') == 'third-party'
+        assert classify_import('gopkg.in/yaml.v2', 'Go') == 'third-party'
+
+
+class TestClassifyJavaImport:
+    """Tests for Java import classification."""
+    
+    def test_java_stdlib_packages(self):
+        """Test classification of Java standard library packages."""
+        assert classify_import('java.util.List', 'Java') == 'stdlib'
+        assert classify_import('java.io.File', 'Java') == 'stdlib'
+        assert classify_import('javax.swing.JFrame', 'Java') == 'stdlib'
+    
+    def test_java_third_party(self):
+        """Test classification of third-party Java packages."""
+        assert classify_import('com.google.gson.Gson', 'Java') == 'third-party'
+        assert classify_import('org.apache.commons.Lang', 'Java') == 'third-party'
+        assert classify_import('com.example.MyClass', 'Java') == 'third-party'
+
+
+class TestClassifyCSharpImport:
+    """Tests for C# import classification."""
+    
+    def test_csharp_stdlib_namespaces(self):
+        """Test classification of C# standard library namespaces."""
+        assert classify_import('System', 'C#') == 'stdlib'
+        assert classify_import('System.IO', 'C#') == 'stdlib'
+        assert classify_import('System.Collections.Generic', 'C#') == 'stdlib'
+        assert classify_import('Microsoft.CSharp', 'C#') == 'stdlib'
+    
+    def test_csharp_third_party(self):
+        """Test classification of third-party C# namespaces."""
+        assert classify_import('Newtonsoft.Json', 'C#') == 'third-party'
+        assert classify_import('MyCompany.MyApp', 'C#') == 'third-party'
+
+
+class TestClassifySwiftImport:
+    """Tests for Swift import classification."""
+    
+    def test_swift_stdlib_modules(self):
+        """Test classification of Swift standard library modules."""
+        assert classify_import('Foundation', 'Swift') == 'stdlib'
+        assert classify_import('UIKit', 'Swift') == 'stdlib'
+        assert classify_import('Swift', 'Swift') == 'stdlib'
+        assert classify_import('Dispatch', 'Swift') == 'stdlib'
+    
+    def test_swift_third_party(self):
+        """Test classification of third-party Swift modules."""
+        assert classify_import('Alamofire', 'Swift') == 'third-party'
+        assert classify_import('SwiftyJSON', 'Swift') == 'third-party'
+
+
+class TestClassifySQLImport:
+    """Tests for SQL import classification."""
+    
+    def test_sql_system_schemas(self):
+        """Test classification of SQL system schemas."""
+        assert classify_import('information_schema', 'SQL') == 'stdlib'
+        assert classify_import('pg_catalog', 'SQL') == 'stdlib'
+        assert classify_import('sys', 'SQL') == 'stdlib'
+    
+    def test_sql_user_schemas(self):
+        """Test classification of user-defined schemas."""
+        assert classify_import('my_schema', 'SQL') == 'third-party'
+        assert classify_import('app_schema', 'SQL') == 'third-party'
 
 
 class TestEdgeCases:
