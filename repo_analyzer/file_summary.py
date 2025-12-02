@@ -346,13 +346,14 @@ def _apply_language_specific_heuristics(
     
     # C/C++ specific heuristics
     if language in ['C', 'C++', 'C/C++']:
-        # Header files
+        # C/C++ headers - check for interface patterns
         if extension in ['.h', '.hpp', '.hh', '.hxx']:
             if name_lower.endswith('_internal') or 'internal' in path_parts:
                 return f"{language} internal header (implementation details)"
             elif name_lower in ['config', 'types', 'defs', 'definitions']:
                 return f"{language} header defining types and constants"
-            elif 'interface' in name_lower or name_lower.startswith('i'):
+            # Check for interface naming: starts with 'I' followed by uppercase (IFoo, not image.h)
+            elif (name.startswith('I') and len(name) > 1 and name[1].isupper()) or 'interface' in name_lower:
                 return f"{language} interface header"
             else:
                 return f"{language} header file (declarations and interfaces)"
@@ -414,6 +415,7 @@ def _apply_language_specific_heuristics(
     # Java specific heuristics
     elif language == 'Java':
         # Check if name follows Interface naming convention
+        # Only match I followed by uppercase letter to avoid false positives like "Input.java"
         if name.startswith('I') and len(name) > 1 and name[1].isupper():
             return "Java interface definition"
         elif name.endswith('Interface'):
@@ -465,7 +467,7 @@ def _apply_language_specific_heuristics(
             return "C# data model/entity class"
         elif name.endswith('Extension') or name.endswith('Extensions'):
             return "C# extension methods"
-        elif 'Program' in name and name_lower == 'program':
+        elif name == 'Program':  # Exact match for Program.cs entry point
             return "C# program entry point"
         else:
             return "C# class implementation"
@@ -530,7 +532,9 @@ def _apply_language_specific_heuristics(
             return "CSS component styles"
         elif 'util' in name_lower or 'helper' in name_lower:
             return "CSS utility classes"
-        elif name_lower.endswith('.min'):
+        # Minified CSS files typically have .min in the extension (style.min.css)
+        # Check if the extension itself contains 'min' or the name ends with 'min'
+        elif name_lower.endswith('min') or '.min.' in str(file_path):
             return "CSS minified stylesheet"
         else:
             return "CSS stylesheet"
