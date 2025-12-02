@@ -1497,7 +1497,8 @@ def generate_dependency_report(
         
         # Generate Markdown output
         markdown_lines = ["# Dependency Graph\n"]
-        markdown_lines.append("Intra-repository dependency analysis for Python and JavaScript/TypeScript files.\n")
+        markdown_lines.append("Multi-language intra-repository dependency analysis.\n")
+        markdown_lines.append("Supports Python, JavaScript/TypeScript, C/C++, Rust, Go, Java, C#, Swift, HTML/CSS, and SQL.\n")
         markdown_lines.append("Includes classification of external dependencies as stdlib vs third-party.\n")
         
         # Statistics

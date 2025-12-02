@@ -98,24 +98,25 @@ The analyzer includes a **pluggable language registry** that provides determinis
 The registry includes built-in support for:
 
 **Full Support** (with structure parsing and dependency scanning):
-- **Python** (.py, .pyw) - AST-based parsing
-- **JavaScript** (.js, .jsx, .mjs, .cjs) - Regex-based parsing
-- **TypeScript** (.ts, .tsx) - Regex-based parsing
+- **Python** (.py, .pyw) - AST-based parsing, import resolution
+- **JavaScript** (.js, .jsx, .mjs, .cjs) - Regex-based parsing, require/import resolution
+- **TypeScript** (.ts, .tsx) - Regex-based parsing, import resolution
 
-**Basic Support** (file detection and metrics):
-- **C** (.c)
-- **C++** (.cpp, .cc, .cxx, .hpp, .hh, .hxx, .h)
-- **C#** (.cs)
-- **Rust** (.rs)
-- **Go** (.go)
-- **Java** (.java)
-- **Swift** (.swift)
-- **HTML** (.html, .htm)
-- **CSS** (.css)
-- **SQL** (.sql)
+**Dependency Scanning** (with import/include parsing and external classification):
+- **C** (.c) - #include directives, stdlib header classification
+- **C++** (.cpp, .cc, .cxx, .hpp, .hh, .hxx, .h) - #include directives, STL classification
+- **C#** (.cs) - using statements, System namespace classification
+- **Rust** (.rs) - use/mod statements, std crate classification
+- **Go** (.go) - import statements, stdlib package classification
+- **Java** (.java) - import statements, java/javax classification
+- **Swift** (.swift) - import statements, Foundation/UIKit classification
+- **HTML** (.html, .htm) - href/src references (local files only)
+- **CSS** (.css) - url() references (local files only)
+- **SQL** (.sql) - vendor-specific include statements, system schema classification
 
-**Additional Languages** (lower priority):
-- Ruby, PHP, Kotlin, Scala, Shell, Bash, Zsh, PowerShell, R, Objective-C, SCSS, Sass, Less, Vue, Markdown, reStructuredText, YAML, JSON, XML, TOML, INI, Config files
+**Basic Support** (file detection and metrics only):
+- Ruby, PHP, Kotlin, Scala, Shell, Bash, Zsh, PowerShell, R, Objective-C, SCSS, Sass, Less, Vue
+- Markdown, reStructuredText, YAML, JSON, XML, TOML, INI, Config files
 
 #### Language Configuration Options
 
@@ -686,10 +687,79 @@ To take advantage of new features:
 
 ### Dependency Graph Features
 
-The `dependencies.json` and `dependencies.md` outputs provide comprehensive dependency analysis:
+The `dependencies.json` and `dependencies.md` outputs provide comprehensive dependency analysis across multiple programming languages.
+
+#### Supported Languages
+
+The dependency scanner now supports the following languages with import/include statement parsing:
+
+| Language | Import Syntax | Resolution | External Classification |
+|----------|--------------|------------|------------------------|
+| **Python** | `import`, `from...import` | ✅ Intra-repo + External | ✅ Stdlib vs 3rd-party |
+| **JavaScript/TypeScript** | `import`, `require()`, `import()` | ✅ Intra-repo + External | ✅ Node core vs npm |
+| **C/C++** | `#include <...>`, `#include "..."` | ✅ Intra-repo + External | ✅ System headers vs 3rd-party |
+| **Rust** | `use`, `mod` | ✅ Intra-repo + External | ✅ std/core vs crates |
+| **Go** | `import` | External only | ✅ stdlib vs packages |
+| **Java** | `import`, `import static` | External only | ✅ java.*/javax.* vs 3rd-party |
+| **C#** | `using` | External only | ✅ System.*/Microsoft.* vs 3rd-party |
+| **Swift** | `import` | External only | ✅ Foundation/UIKit vs packages |
+| **HTML/CSS** | `href`, `src`, `url()` | ✅ Local assets only | N/A |
+| **SQL** | `\i`, `SOURCE`, `EXEC` | ✅ Intra-repo includes | ✅ System schemas vs user |
+
+**Note on Resolution:**
+- **Intra-repo resolution**: Resolves import/include statements to actual files within the repository, creating dependency edges
+- **External only**: Tracks external packages/modules but doesn't resolve to files (requires build context)
+- For languages like Go, Java, C#, and Swift, intra-repo resolution would require build system integration, so only external dependencies are tracked
+
+#### Language-Specific Parsing Details
+
+**C/C++:**
+- Parses `#include <header>` and `#include "header"` directives
+- Resolves headers relative to source file, include directories, and repo root
+- Classifies standard library headers (stdio.h, iostream, etc.) vs third-party (boost, etc.)
+- Skips comments to avoid false positives
+
+**Rust:**
+- Parses `use crate::module`, `use std::io`, and `mod module` statements
+- Resolves local modules via file system (module.rs, module/mod.rs patterns)
+- Handles crate-relative (`crate::`), self-relative (`self::`), and parent-relative (`super::`) imports
+- Classifies std/core/alloc crates as stdlib
+
+**Go:**
+- Parses single-line `import "package"` and multi-line `import (...)` blocks
+- Supports aliased imports including dot imports (`. "package"`)
+- Classifies by domain presence: packages without domains are stdlib (fmt, net/http)
+- Packages with domains (github.com/...) are third-party
+
+**Java:**
+- Parses `import` and `import static` statements, including wildcards
+- Classifies java.* and javax.* as stdlib
+- All other packages (com.*, org.*, etc.) are third-party
+
+**C#:**
+- Parses `using` directives including aliased using statements
+- Classifies System.* and Microsoft.* namespaces as stdlib
+- Third-party packages (Newtonsoft.Json, etc.) are detected
+
+**Swift:**
+- Parses `import` statements including typed imports (`import struct Foundation.URL`)
+- Classifies Apple frameworks (Foundation, UIKit, SwiftUI) as stdlib
+- Third-party modules (Alamofire, etc.) are detected
+
+**HTML/CSS:**
+- Parses `href` and `src` attributes in HTML
+- Parses `url()` references in CSS
+- Only tracks local/relative references within the repository
+- Skips absolute URLs, CDN references, and data URLs
+
+**SQL:**
+- Parses PostgreSQL `\i` and `\include` commands
+- Parses MySQL `SOURCE` and `\.` commands
+- Parses SQL Server `EXEC` patterns with .sql files
+- Classifies system schemas (information_schema, pg_catalog) vs user schemas
 
 #### Intra-Repository Dependencies
-- Tracks import/require statements across Python and JavaScript/TypeScript files
+- Tracks import/require/include statements across all supported languages
 - Resolves relative and absolute imports to actual file paths within the repository
 - Provides graph structure with nodes (files) and edges (dependencies)
 - Identifies most depended-upon files and files with most dependencies
@@ -729,11 +799,51 @@ The `dependencies.json` and `dependencies.md` outputs provide comprehensive depe
 }
 ```
 
-**Classification Tables:**
-- **Python**: 100+ stdlib modules (os, sys, pathlib, typing, asyncio, collections, etc.)
-- **Node.js**: 70+ core modules (fs, path, http, https, crypto, stream, etc.)
-- Tables are maintained in code at `repo_analyzer/stdlib_classification.py`
-- Future updates can easily extend classification for additional ecosystems
+#### Standard Library Classification Tables
+
+Classification is deterministic and based on comprehensive reference tables maintained in `repo_analyzer/stdlib_classification.py`:
+
+- **Python**: 150+ stdlib modules (os, sys, pathlib, typing, asyncio, collections, etc.)
+- **Node.js**: 80+ core modules (fs, path, http, https, crypto, stream, etc.)
+- **C/C++**: 100+ standard headers (stdio.h, iostream, vector, algorithm, etc.)
+- **Rust**: 40+ stdlib crates/modules (std::*, core::*, alloc::*)
+- **Go**: 150+ stdlib packages (fmt, os, net/http, encoding/json, etc.)
+- **Java**: 20+ stdlib packages (java.util, java.io, javax.swing, etc.)
+- **C#**: 15+ stdlib namespaces (System.*, Microsoft.*)
+- **Swift**: 15+ stdlib modules (Foundation, UIKit, SwiftUI, Combine, etc.)
+- **SQL**: System schemas (information_schema, pg_catalog, sys, etc.)
+
+#### Limitations and Troubleshooting
+
+**False Positives:**
+- Comments containing import-like syntax may be parsed if comment detection fails
+- Strings containing import-like patterns are filtered but edge cases may occur
+
+**False Negatives:**
+- Dynamic/computed imports (e.g., `import(variable)`) are not resolved
+- Conditional imports may not be detected
+- Generated code or preprocessor directives may not be parsed correctly
+
+**Missing Dependencies:**
+- For C/C++: Generated headers or headers in non-standard locations may not resolve
+- For Rust: Complex module structures or procedural macros may not resolve
+- For HTML/CSS: Dynamically generated asset references won't be detected
+
+**External Dependencies Not Classified:**
+- Custom/uncommon standard library modules may be misclassified as third-party
+- Vendor-specific SQL extensions may not be recognized as system objects
+
+**Troubleshooting Tips:**
+1. Check that file extensions are correctly mapped to languages
+2. Verify that include paths are relative to source file or repo root
+3. For missing intra-repo edges, check if files exist at expected paths
+4. For misclassified external deps, check if module is in stdlib tables
+5. Use verbose logging (if available) to see which imports were detected
+
+**Performance Considerations:**
+- Large monorepos (10,000+ files) may take several minutes to analyze
+- Disable unused languages via `language_config` to improve performance
+- Binary files and very large text files are automatically skipped
 
 ## Development Status
 
@@ -750,11 +860,13 @@ Current implementation includes:
   - ✅ Role inference with justifications
   - ✅ Graceful error handling for syntax errors
   - ✅ External dependency tracking (stdlib vs third-party) at detailed level
-- ✅ Dependency scanner (Markdown + JSON, Python + JS/TS imports)
-  - ✅ Intra-repository dependency graph
-  - ✅ External dependency classification (stdlib vs third-party)
+- ✅ Multi-language dependency scanner (Markdown + JSON)
+  - ✅ Intra-repository dependency graph for Python, JS/TS, C/C++, Rust, HTML/CSS, SQL
+  - ✅ External dependency classification for all languages (10+ languages)
   - ✅ Per-file and aggregated external dependency reporting
   - ✅ Deterministic classification without network calls
+  - ✅ Comprehensive stdlib/standard library tables for each language
+  - ✅ Edge case handling (comments, strings, missing files)
 
 ## Error Handling
 

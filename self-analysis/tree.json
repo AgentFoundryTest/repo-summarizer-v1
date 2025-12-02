@@ -50,6 +50,10 @@
               "children": [
                 {
                   "type": "file",
+                  "name": "lastfailed"
+                },
+                {
+                  "type": "file",
                   "name": "nodeids"
                 }
               ]
