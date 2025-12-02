@@ -6,6 +6,7 @@ A Python tool for analyzing repository structure, generating file summaries, and
 
 ## Features
 
+- **Multi-language support**: 40+ programming languages with pluggable language registry
 - **Structured file summaries**: Schema v2.0 with role classifications, metrics, and optional structure parsing
 - **External dependency tracking**: Automatic classification of stdlib vs third-party dependencies
 - **Non-interactive CLI**: Designed for automation and CI/CD integration
@@ -13,6 +14,13 @@ A Python tool for analyzing repository structure, generating file summaries, and
 - **Dry-run mode**: Preview actions without modifying the filesystem
 - **Flexible configuration**: Supports both config files and CLI arguments with multiple detail levels
 - **Safe path handling**: Prevents writes outside designated output directory
+- **Air-gapped friendly**: Works completely offline with no external dependencies
+
+## Documentation
+
+- **[Multi-Language Walkthrough](docs/walkthrough.md)** - Complete guide to analyzing multi-language repositories
+- **[Roadmap](docs/roadmap.md)** - Future enhancements and planned features
+- **[Environment Variables](.env.example)** - No secrets required (see file for details)
 
 ## Installation
 

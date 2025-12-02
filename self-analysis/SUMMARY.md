@@ -2,6 +2,19 @@
 
 This document provides an overview of the repository analysis results, showcasing the enriched summaries and dependency classification features of the Repository Analyzer tool.
 
+## Multi-Language Support
+
+The Repository Analyzer now supports **40+ programming languages** with comprehensive features:
+
+- **Full support** (structure parsing + dependency scanning): Python, JavaScript, TypeScript
+- **Dependency scanning**: C, C++, C#, Rust, Go, Java, Swift, HTML, CSS, SQL
+- **Basic support**: Ruby, PHP, Kotlin, Scala, Shell, and 20+ more languages
+
+For detailed guidance, see:
+- **[Multi-Language Walkthrough](../docs/walkthrough.md)** - Complete usage guide
+- **[Roadmap](../docs/roadmap.md)** - Future enhancements
+- **[Environment Setup](../.env.example)** - No secrets required
+
 ## Key Features Demonstrated
 
 This analysis demonstrates the **Schema v2.0** capabilities:
@@ -71,10 +84,12 @@ Human-readable format: [dependencies.md](dependencies.md)
 ## Configuration Details
 
 This analysis was generated using the configuration in repo-analyzer.config.json:
+- **Multi-Language**: 40+ languages with configurable language registry
 - **Detail Level**: Configurable (minimal/standard/detailed)
-- **Legacy Compatibility**: Backward-compatible with v1.0 consumers
+- **Legacy Compatibility**: Backward-compatible with v1.0 consumers - existing tools continue to work
 - **Max File Size**: Configurable threshold for expensive parsing operations
 - **Excluded Patterns**: Customizable exclusion rules for tree traversal
+- **Air-Gapped Friendly**: No secrets or network connectivity required (see [.env.example](../.env.example))
 
 For configuration options, see repo-analyzer.config.json or the project README.
 
