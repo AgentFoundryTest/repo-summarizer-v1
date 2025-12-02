@@ -330,16 +330,17 @@ class TestBackwardCompatibility:
     """Tests for backward compatibility with existing code."""
     
     def test_all_legacy_extensions_mapped(self):
-        """Test that all legacy LANGUAGE_MAP extensions are still supported."""
+        """Test that all legacy LANGUAGE_MAP extensions are still supported in the registry."""
         from repo_analyzer.file_summary import LANGUAGE_MAP
         
         registry = get_global_registry()
         
+        # Verify all legacy extensions are supported in the registry
+        # This ensures backward compatibility - no regression in supported file types
         for ext in LANGUAGE_MAP.keys():
-            # Either in registry or will fall back to LANGUAGE_MAP
             language = registry.get_language_by_extension(ext)
-            # We don't require exact match, just that mapping exists
-            assert language is not None or ext in LANGUAGE_MAP
+            assert language is not None, \
+                f"Extension {ext} from LANGUAGE_MAP not supported in registry"
     
     def test_registry_handles_disabled_languages_gracefully(self):
         """Test that disabled languages don't crash the system."""
