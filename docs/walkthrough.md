@@ -525,7 +525,11 @@ repo-analyzer scan --output-dir "$OUTPUT_DIR"
 
 # Archive results
 tar -czf "${OUTPUT_DIR}.tar.gz" "$OUTPUT_DIR"
-rm -rf "$OUTPUT_DIR"
+
+# Safely remove the directory
+if [ -n "$OUTPUT_DIR" ] && [ -d "$OUTPUT_DIR" ]; then
+  rm -rf "$OUTPUT_DIR"
+fi
 
 echo "Analysis complete: ${OUTPUT_DIR}.tar.gz"
 ```
