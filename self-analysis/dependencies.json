@@ -72,6 +72,23 @@
       }
     },
     {
+      "id": "repo_analyzer/language_registry.py",
+      "path": "repo_analyzer/language_registry.py",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [
+          "dataclasses.dataclass",
+          "dataclasses.field",
+          "typing.Any",
+          "typing.Dict",
+          "typing.List",
+          "typing.Optional",
+          "typing.Set"
+        ],
+        "third-party": []
+      }
+    },
+    {
       "id": "repo_analyzer/stdlib_classification.py",
       "path": "repo_analyzer/stdlib_classification.py",
       "type": "file",
@@ -131,6 +148,17 @@
       }
     },
     {
+      "id": "tests/test_language_registry.py",
+      "path": "tests/test_language_registry.py",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [],
+        "third-party": [
+          "pytest"
+        ]
+      }
+    },
+    {
       "id": "tests/test_stdlib_classification.py",
       "path": "tests/test_stdlib_classification.py",
       "type": "file",
@@ -172,8 +200,16 @@
       "target": "repo_analyzer/dependency_graph.py"
     },
     {
+      "source": "repo_analyzer/cli.py",
+      "target": "repo_analyzer/language_registry.py"
+    },
+    {
       "source": "repo_analyzer/dependency_graph.py",
       "target": "repo_analyzer/stdlib_classification.py"
+    },
+    {
+      "source": "repo_analyzer/file_summary.py",
+      "target": "repo_analyzer/language_registry.py"
     },
     {
       "source": "repo_analyzer/file_summary.py",
@@ -185,6 +221,14 @@
     },
     {
       "source": "tests/test_file_summary.py",
+      "target": "repo_analyzer/file_summary.py"
+    },
+    {
+      "source": "tests/test_language_registry.py",
+      "target": "repo_analyzer/language_registry.py"
+    },
+    {
+      "source": "tests/test_language_registry.py",
       "target": "repo_analyzer/file_summary.py"
     },
     {
@@ -200,6 +244,8 @@
     "stdlib": [
       "argparse",
       "ast",
+      "dataclasses.dataclass",
+      "dataclasses.field",
       "json",
       "os",
       "pathlib.Path",
@@ -219,7 +265,7 @@
     "third-party": [
       "pytest"
     ],
-    "stdlib_count": 17,
+    "stdlib_count": 19,
     "third-party_count": 1
   }
 }

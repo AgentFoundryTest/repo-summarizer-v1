@@ -319,6 +319,249 @@ def _get_language(file_path: Path) -> str:
     return LANGUAGE_MAP.get(extension, 'Unknown')
 
 
+def _apply_language_specific_heuristics(
+    language: str,
+    name: str,
+    name_lower: str,
+    extension: str,
+    path_parts: List[str],
+    file_path: Path
+) -> Optional[str]:
+    """
+    Apply language-specific heuristics for file summary generation.
+    
+    Returns language-specific summary or None if no specific heuristic applies.
+    
+    Args:
+        language: Detected programming language
+        name: Original file stem (name without extension)
+        name_lower: Lowercase file stem
+        extension: File extension (lowercase)
+        path_parts: Path components from root
+        file_path: Full path to the file
+    
+    Returns:
+        Language-specific summary string or None
+    """
+    
+    # C/C++ specific heuristics
+    if language in ['C', 'C++', 'C/C++']:
+        # Header files
+        if extension in ['.h', '.hpp', '.hh', '.hxx']:
+            if name_lower.endswith('_internal') or 'internal' in path_parts:
+                return f"{language} internal header (implementation details)"
+            elif name_lower in ['config', 'types', 'defs', 'definitions']:
+                return f"{language} header defining types and constants"
+            elif 'interface' in name_lower or name_lower.startswith('i'):
+                return f"{language} interface header"
+            else:
+                return f"{language} header file (declarations and interfaces)"
+        
+        # Implementation files
+        elif extension in ['.c', '.cpp', '.cc', '.cxx']:
+            if name_lower == 'main':
+                return f"{language} program entry point"
+            elif name_lower.endswith('_test') or name_lower.startswith('test_'):
+                return f"{language} test implementation"
+            else:
+                return f"{language} implementation file"
+        
+        # Template files
+        elif extension in ['.tpp', '.tcc']:
+            return f"{language} template implementation"
+    
+    # Rust specific heuristics
+    elif language == 'Rust':
+        if name_lower == 'lib':
+            return "Rust library entry point (lib.rs)"
+        elif name_lower == 'main':
+            return "Rust binary entry point (main.rs)"
+        elif name_lower == 'mod':
+            return "Rust module declaration file"
+        elif name_lower.endswith('_test') or name_lower.startswith('test_'):
+            return "Rust test module"
+        elif path_parts and path_parts[0] == 'src':
+            if len(path_parts) > 1 and path_parts[1] == 'bin':
+                return "Rust binary implementation"
+            else:
+                return "Rust module implementation"
+        elif 'tests' in path_parts:
+            return "Rust integration test"
+        elif 'benches' in path_parts:
+            return "Rust benchmark suite"
+        elif 'examples' in path_parts:
+            return "Rust example program"
+    
+    # Go specific heuristics
+    elif language == 'Go':
+        if name_lower == 'main':
+            return "Go program entry point (main package)"
+        elif name_lower.endswith('_test'):
+            return "Go test file"
+        elif name_lower.endswith('_internal'):
+            return "Go internal implementation (unexported)"
+        elif path_parts and path_parts[0] == 'cmd':
+            return "Go command-line application"
+        elif path_parts and path_parts[0] == 'pkg':
+            return "Go library package"
+        elif path_parts and path_parts[0] == 'internal':
+            return "Go internal package (not for external use)"
+        elif 'proto' in name_lower or extension == '.pb.go':
+            return "Go protocol buffer definitions"
+        else:
+            return "Go package implementation"
+    
+    # Java specific heuristics
+    elif language == 'Java':
+        # Check if name follows Interface naming convention
+        if name.startswith('I') and len(name) > 1 and name[1].isupper():
+            return "Java interface definition"
+        elif name.endswith('Interface'):
+            return "Java interface definition"
+        elif name.endswith('Abstract') or name.startswith('Abstract'):
+            return "Java abstract base class"
+        elif name.endswith('Exception'):
+            return "Java custom exception class"
+        elif name.endswith('Test'):
+            return "Java unit test class"
+        elif name.endswith('Tests'):
+            return "Java test suite"
+        elif name.endswith('Controller'):
+            return "Java controller class (MVC pattern)"
+        elif name.endswith('Service'):
+            return "Java service class (business logic)"
+        elif name.endswith('Repository') or name.endswith('DAO'):
+            return "Java data access class"
+        elif name.endswith('Entity') or name.endswith('Model'):
+            return "Java data model/entity class"
+        elif name.endswith('Util') or name.endswith('Utils') or name.endswith('Helper'):
+            return "Java utility class (helper functions)"
+        elif path_parts and 'test' in [p.lower() for p in path_parts]:
+            return "Java test class"
+        else:
+            return "Java class implementation"
+    
+    # C# specific heuristics
+    elif language == 'C#':
+        if name.startswith('I') and len(name) > 1 and name[1].isupper():
+            return "C# interface definition"
+        elif name.endswith('Interface'):
+            return "C# interface definition"
+        elif name.endswith('Abstract') or name.startswith('Abstract'):
+            return "C# abstract base class"
+        elif name.endswith('Exception'):
+            return "C# custom exception class"
+        elif name.endswith('Test') or name.endswith('Tests'):
+            return "C# unit test class"
+        elif name.endswith('Controller'):
+            return "C# controller class (MVC/API pattern)"
+        elif name.endswith('Service'):
+            return "C# service class (business logic)"
+        elif name.endswith('Repository'):
+            return "C# repository class (data access)"
+        elif name.endswith('ViewModel'):
+            return "C# view model (MVVM pattern)"
+        elif name.endswith('Model') or name.endswith('Entity'):
+            return "C# data model/entity class"
+        elif name.endswith('Extension') or name.endswith('Extensions'):
+            return "C# extension methods"
+        elif 'Program' in name and name_lower == 'program':
+            return "C# program entry point"
+        else:
+            return "C# class implementation"
+    
+    # Swift specific heuristics
+    elif language == 'Swift':
+        if name.endswith('ViewController') or name.endswith('Controller'):
+            return "Swift view controller (UI logic)"
+        elif name.endswith('View'):
+            return "Swift view (UI component)"
+        elif name.endswith('ViewModel'):
+            return "Swift view model (MVVM pattern)"
+        elif name.endswith('Model'):
+            return "Swift data model"
+        elif name.endswith('Service'):
+            return "Swift service (business logic)"
+        elif name.endswith('Manager'):
+            return "Swift manager class (resource management)"
+        elif name.endswith('Delegate') or 'Delegate' in name:
+            return "Swift delegate implementation"
+        elif name.endswith('Protocol'):
+            return "Swift protocol definition"
+        elif name.endswith('Extension'):
+            return "Swift type extension"
+        elif name.endswith('Tests') or name.endswith('Test'):
+            return "Swift test case"
+        else:
+            return "Swift implementation file"
+    
+    # HTML specific heuristics
+    elif language == 'HTML':
+        if name_lower in ['index', 'home', 'main']:
+            return "HTML main page (entry point)"
+        elif 'template' in name_lower or path_parts and 'templates' in [p.lower() for p in path_parts]:
+            return "HTML template file"
+        elif 'component' in name_lower or path_parts and 'components' in [p.lower() for p in path_parts]:
+            return "HTML component template"
+        elif 'partial' in name_lower or path_parts and 'partials' in [p.lower() for p in path_parts]:
+            return "HTML partial template (reusable fragment)"
+        elif 'layout' in name_lower:
+            return "HTML layout template"
+        elif 'email' in name_lower or path_parts and 'email' in [p.lower() for p in path_parts]:
+            return "HTML email template"
+        else:
+            return "HTML page"
+    
+    # CSS specific heuristics
+    elif language == 'CSS':
+        if name_lower in ['style', 'styles', 'main', 'app']:
+            return "CSS main stylesheet"
+        elif 'theme' in name_lower or 'themes' in name_lower:
+            return "CSS theme definitions"
+        elif 'variable' in name_lower or 'vars' in name_lower or name_lower == 'variables':
+            return "CSS variables and constants"
+        elif 'reset' in name_lower or 'normalize' in name_lower:
+            return "CSS reset/normalization rules"
+        elif 'responsive' in name_lower or 'media' in name_lower:
+            return "CSS responsive design rules"
+        elif 'print' in name_lower:
+            return "CSS print stylesheet"
+        elif 'component' in name_lower or path_parts and 'components' in [p.lower() for p in path_parts]:
+            return "CSS component styles"
+        elif 'util' in name_lower or 'helper' in name_lower:
+            return "CSS utility classes"
+        elif name_lower.endswith('.min'):
+            return "CSS minified stylesheet"
+        else:
+            return "CSS stylesheet"
+    
+    # SQL specific heuristics
+    elif language == 'SQL':
+        if 'migration' in name_lower or path_parts and 'migrations' in [p.lower() for p in path_parts]:
+            return "SQL database migration script"
+        elif 'schema' in name_lower or name_lower in ['ddl', 'create']:
+            return "SQL schema definition (DDL)"
+        elif 'seed' in name_lower or 'fixture' in name_lower:
+            return "SQL seed data (test/initial data)"
+        elif 'view' in name_lower or name_lower.startswith('v_'):
+            return "SQL view definition"
+        elif 'proc' in name_lower or 'procedure' in name_lower or name_lower.startswith('sp_'):
+            return "SQL stored procedure"
+        elif 'function' in name_lower or name_lower.startswith('fn_'):
+            return "SQL function definition"
+        elif 'trigger' in name_lower:
+            return "SQL trigger definition"
+        elif 'query' in name_lower or 'queries' in name_lower:
+            return "SQL query definitions"
+        elif 'rollback' in name_lower or 'down' in name_lower:
+            return "SQL migration rollback script"
+        else:
+            return "SQL script"
+    
+    # Return None if no language-specific heuristic applies
+    return None
+
+
 def _detect_file_role(file_path: Path, root_path: Path) -> Tuple[str, str]:
     """
     Detect the role/purpose of a file based on its name and path.
@@ -458,6 +701,13 @@ def _generate_heuristic_summary(file_path: Path, root_path: Path) -> str:
     
     # Heuristics based on filename patterns
     name_lower = name.lower()
+    
+    # Language-specific heuristics (applied first for better specificity)
+    language_summary = _apply_language_specific_heuristics(
+        language, name, name_lower, extension, path_parts, file_path
+    )
+    if language_summary:
+        return language_summary
     
     # Configuration files
     if name_lower in ['config', 'configuration', 'settings']:

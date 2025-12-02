@@ -1,5 +1,12 @@
 # repo-summarizer-v1
 
+├── .github
+  ├── af-config
+    ├── license-header.config.json
+    ├── LICENSE_HEADER
+    └── repo-analyzer.config.json
+  └── workflows
+    └── af_maintenance.yml
 ├── .pytest_cache
   ├── v
     └── cache
@@ -12,6 +19,7 @@
   ├── cli.py
   ├── dependency_graph.py
   ├── file_summary.py
+  ├── language_registry.py
   ├── stdlib_classification.py
   └── tree_report.py
 ├── repo_analyzer.egg-info
@@ -32,6 +40,7 @@
 ├── tests
   ├── test_dependency_graph.py
   ├── test_file_summary.py
+  ├── test_language_registry.py
   ├── test_stdlib_classification.py
   └── test_tree_report.py
 ├── .gitignore
