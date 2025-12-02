@@ -1,0 +1,30 @@
+{
+  "type": "directory",
+  "name": "c_cpp_rust",
+  "children": [
+    {
+      "type": "file",
+      "name": "lib.rs"
+    },
+    {
+      "type": "file",
+      "name": "main.c"
+    },
+    {
+      "type": "file",
+      "name": "utils.c"
+    },
+    {
+      "type": "file",
+      "name": "utils.h"
+    },
+    {
+      "type": "file",
+      "name": "utils.rs"
+    },
+    {
+      "type": "file",
+      "name": "vector_ops.cpp"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "schema_version": "2.0",
+  "total_files": 6,
+  "files": [
+    {
+      "schema_version": "2.0",
+      "path": "lib.rs",
+      "language": "Rust",
+      "role": "implementation",
+      "role_justification": "general implementation file (default classification)",
+      "summary": "Rust library entry point (lib.rs)",
+      "summary_text": "Rust library entry point (lib.rs)",
+      "metrics": {
+        "size_bytes": 111,
+        "loc": 6,
+        "todo_count": 0
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "main.c",
+      "language": "C",
+      "role": "entry-point",
+      "role_justification": "common entry point name 'main'",
+      "summary": "C program entry point (role: entry-point)",
+      "summary_text": "C program entry point (role: entry-point)",
+      "metrics": {
+        "size_bytes": 158,
+        "loc": 5,
+        "todo_count": 1
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "utils.c",
+      "language": "C",
+      "role": "utility",
+      "role_justification": "utility/helper name 'utils'",
+      "summary": "C implementation file (role: utility)",
+      "summary_text": "C implementation file (role: utility)",
+      "metrics": {
+        "size_bytes": 105,
+        "loc": 3,
+        "todo_count": 0
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "utils.h",
+      "language": "C++",
+      "role": "utility",
+      "role_justification": "utility/helper name 'utils'",
+      "summary": "C++ header file (declarations and interfaces) (role: utility)",
+      "summary_text": "C++ header file (declarations and interfaces) (role: utility)",
+      "metrics": {
+        "size_bytes": 81,
+        "loc": 1,
+        "todo_count": 0
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "utils.rs",
+      "language": "Rust",
+      "role": "utility",
+      "role_justification": "utility/helper name 'utils'",
+      "summary": "Rust utility functions (role: utility)",
+      "summary_text": "Rust utility functions (role: utility)",
+      "metrics": {
+        "size_bytes": 177,
+        "loc": 9,
+        "todo_count": 0
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "vector_ops.cpp",
+      "language": "C++",
+      "role": "implementation",
+      "role_justification": "general implementation file (default classification)",
+      "summary": "C++ implementation file",
+      "summary_text": "C++ implementation file",
+      "metrics": {
+        "size_bytes": 269,
+        "loc": 9,
+        "todo_count": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "nodes": [
+    {
+      "id": "lib.rs",
+      "path": "lib.rs",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [
+          "std::io"
+        ],
+        "third-party": []
+      }
+    },
+    {
+      "id": "main.c",
+      "path": "main.c",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [
+          "stdio.h"
+        ],
+        "third-party": []
+      }
+    },
+    {
+      "id": "utils.c",
+      "path": "utils.c",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [
+          "stdio.h"
+        ],
+        "third-party": []
+      }
+    },
+    {
+      "id": "utils.h",
+      "path": "utils.h",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [],
+        "third-party": []
+      }
+    },
+    {
+      "id": "utils.rs",
+      "path": "utils.rs",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [],
+        "third-party": [
+          "tests"
+        ]
+      }
+    },
+    {
+      "id": "vector_ops.cpp",
+      "path": "vector_ops.cpp",
+      "type": "file",
+      "external_dependencies": {
+        "stdlib": [
+          "iostream",
+          "vector"
+        ],
+        "third-party": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "main.c",
+      "target": "utils.h"
+    },
+    {
+      "source": "utils.c",
+      "target": "utils.h"
+    }
+  ],
+  "external_dependencies_summary": {
+    "stdlib": [
+      "iostream",
+      "std::io",
+      "stdio.h",
+      "vector"
+    ],
+    "third-party": [
+      "tests"
+    ],
+    "stdlib_count": 4,
+    "third-party_count": 1
+  }
+}

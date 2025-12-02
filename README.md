@@ -845,6 +845,96 @@ Classification is deterministic and based on comprehensive reference tables main
 - Disable unused languages via `language_config` to improve performance
 - Binary files and very large text files are automatically skipped
 
+## Testing
+
+The repository includes a comprehensive test suite with 390+ tests covering all features and edge cases.
+
+### Running Tests
+
+Install development dependencies:
+```bash
+pip install -e ".[dev]"
+```
+
+Run all tests:
+```bash
+pytest tests/
+```
+
+Run specific test files:
+```bash
+pytest tests/test_file_summary.py
+pytest tests/test_dependency_graph.py
+pytest tests/test_tree_report.py
+```
+
+Run tests with coverage:
+```bash
+pytest tests/ --cov=repo_analyzer --cov-report=html
+```
+
+### Multi-Language Fixtures
+
+The test suite includes representative multi-language fixtures in `tests/fixtures/` that simulate realistic repository combinations:
+
+1. **c_cpp_rust/** - Systems programming with C, C++, and Rust
+2. **go_sql/** - Backend service with Go and SQL migrations
+3. **html_css_js/** - Frontend web application
+4. **swift_csharp/** - Cross-platform mobile/desktop development
+
+These fixtures are used for regression testing to ensure that:
+- All language combinations are correctly detected
+- Cross-language dependencies are properly tracked
+- Schema output remains stable and deterministic
+- CLI flows work consistently across language ecosystems
+
+### Running Focused Test Suites
+
+Run only multi-language fixture tests:
+```bash
+pytest tests/test_multi_language_fixtures.py
+```
+
+Run tests for a specific fixture:
+```bash
+pytest tests/test_multi_language_fixtures.py -k "c_cpp_rust"
+pytest tests/test_multi_language_fixtures.py -k "go_sql"
+```
+
+Run with verbose output to see individual test details:
+```bash
+pytest tests/test_multi_language_fixtures.py -v
+```
+
+### Test Organization
+
+- **test_file_summary.py** - File detection, language recognition, role classification, metrics
+- **test_dependency_graph.py** - Import parsing, dependency resolution, external classification
+- **test_tree_report.py** - Directory traversal, tree generation, exclusion patterns
+- **test_language_registry.py** - Language registry, extension mapping, priority resolution
+- **test_stdlib_classification.py** - Standard library detection across all languages
+- **test_multi_language_fixtures.py** - Multi-language combinations, cross-language scenarios
+
+### Contributing Tests
+
+When adding new features:
+1. Add fixtures if testing multi-language scenarios
+2. Follow existing test patterns (pytest parametrization, tmp_path fixtures)
+3. Ensure deterministic output (sorted lists, consistent ordering)
+4. Test both success and error paths
+5. Run the full test suite before committing
+
+### Edge Cases Covered
+
+The test suite explicitly covers:
+- Windows path compatibility (paths under 260 characters)
+- OS-specific newline differences (normalized in assertions)
+- Parallel test execution (no shared state mutation)
+- Missing files and permission errors
+- Malformed syntax in source files
+- Large files and deep directory structures
+- Symlink handling (skipped to avoid infinite loops)
+
 ## Development Status
 
 Current implementation includes:
