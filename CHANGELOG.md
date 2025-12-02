@@ -5,6 +5,32 @@ All notable changes to the Repository Analyzer project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-12-02
+
+### Documentation
+
+This is a documentation-only release that adds comprehensive guides for the multi-language features introduced in v0.2.0.
+
+#### Added
+- **[Multi-Language Walkthrough](docs/walkthrough.md)** - Complete guide demonstrating how to analyze multi-language repositories with practical examples
+  - Quick start examples for scanning repositories
+  - Language configuration tutorials (enabling specific languages, handling conflicts)
+  - Output interpretation guide with real examples from test fixtures
+  - Advanced usage patterns for CI/CD integration
+- **[Project Roadmap](docs/roadmap.md)** - Future enhancement plans and vision document
+  - Clear articulation of design principles (deterministic, air-gapped, language-agnostic)
+  - Recently completed features summary (v0.2.0 achievements)
+  - Short-term and long-term enhancement proposals
+  - Community contribution guidelines
+
+#### Notes
+- **No code changes**: This release contains only documentation additions
+- **Backward compatible**: All features and APIs remain unchanged from v0.2.0
+- **No new dependencies**: No changes to runtime or development dependencies
+- **Commands unchanged**: CLI interface and configuration options remain identical
+
+The multi-language analysis capabilities (40+ languages, external dependency classification, enhanced file summaries with schema v2.0) introduced in v0.2.0 are fully documented and production-ready.
+
 ## [0.2.0] - 2025-11-23
 
 ### Added
@@ -99,5 +125,6 @@ To leverage v2.0 features:
 - JSON and Markdown output formats for all reports
 - Comprehensive test coverage with pytest
 
-[0.2.0]: https://github.com/AgentFoundryTest/repo-summarizer-v1/releases/tag/v0.2.0
-[0.1.0]: https://github.com/AgentFoundryTest/repo-summarizer-v1/releases/tag/v0.1.0
+[0.2.1]: https://github.com/AgentFoundryExamples/repo-summarizer-v1/releases/tag/v0.2.1
+[0.2.0]: https://github.com/AgentFoundryExamples/repo-summarizer-v1/releases/tag/v0.2.0
+[0.1.0]: https://github.com/AgentFoundryExamples/repo-summarizer-v1/releases/tag/v0.1.0

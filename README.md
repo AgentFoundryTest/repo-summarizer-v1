@@ -2,7 +2,7 @@
 
 A Python tool for analyzing repository structure, generating file summaries, and tracking dependencies. Designed for use in CI/CD pipelines with deterministic, non-interactive operation.
 
-**Current Version**: 0.2.0 ([Changelog](CHANGELOG.md))
+**Current Version**: 0.2.1 ([Changelog](CHANGELOG.md))
 
 ## Features
 
