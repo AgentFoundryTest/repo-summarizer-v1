@@ -331,7 +331,7 @@ def _parse_c_cpp_includes(content: str, file_path: Path) -> List[str]:
     
     # Match #include "header.h" or #include <header.h>
     # Pattern captures both quoted and angle-bracket includes
-    include_pattern = r'^\s*#\s*include\s+[<"]([^>"]+)[>"]'
+    include_pattern = r'^\s*#\s*include\s*[<"]([^>"]+)[>"]'
     
     for line in content.split('\n'):
         match = re.match(include_pattern, line)
@@ -414,11 +414,12 @@ def _parse_go_imports(content: str, file_path: Path) -> List[str]:
     content = '\n'.join(lines)
     
     # Match 'import "package"' or 'import alias "package"'
-    single_import_pattern = r'^\s*import\s+(?:[\w]+\s+)?"([^"]+)"'
+    # Alias can be a word or dot (.)
+    single_import_pattern = r'^\s*import\s+(?:[\w.]+\s+)?"([^"]+)"'
     
     # Match multi-line imports: import ( ... )
     multi_import_start = r'^\s*import\s+\('
-    import_line_pattern = r'^\s*(?:[\w]+\s+)?"([^"]+)"'
+    import_line_pattern = r'^\s*(?:[\w.]+\s+)?"([^"]+)"'
     
     in_import_block = False
     for line in content.split('\n'):

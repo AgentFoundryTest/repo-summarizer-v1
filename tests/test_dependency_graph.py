@@ -1339,3 +1339,752 @@ import json
         # Should be sorted
         stdlib_deps = data1['external_dependencies_summary']['stdlib']
         assert stdlib_deps == sorted(stdlib_deps)
+
+
+# Import new parser functions for testing
+from repo_analyzer.dependency_graph import (
+    _parse_c_cpp_includes,
+    _parse_rust_imports,
+    _parse_go_imports,
+    _parse_java_imports,
+    _parse_csharp_imports,
+    _parse_swift_imports,
+    _parse_html_css_references,
+    _parse_sql_includes,
+    _resolve_c_cpp_include,
+    _resolve_rust_import,
+    _resolve_html_css_reference,
+    _resolve_sql_include,
+)
+
+
+class TestParseCCppIncludes:
+    """Tests for C/C++ include parsing."""
+    
+    def test_simple_includes(self, tmp_path):
+        """Test parsing simple #include statements."""
+        content = """
+#include <stdio.h>
+#include <vector>
+#include "myheader.h"
+"""
+        file_path = tmp_path / "test.cpp"
+        includes = _parse_c_cpp_includes(content, file_path)
+        
+        assert 'stdio.h' in includes
+        assert 'vector' in includes
+        assert 'myheader.h' in includes
+    
+    def test_includes_with_paths(self, tmp_path):
+        """Test parsing includes with directory paths."""
+        content = """
+#include <sys/types.h>
+#include "subdir/header.hpp"
+#include "../../common/utils.h"
+"""
+        file_path = tmp_path / "test.cpp"
+        includes = _parse_c_cpp_includes(content, file_path)
+        
+        assert 'sys/types.h' in includes
+        assert 'subdir/header.hpp' in includes
+        assert '../../common/utils.h' in includes
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// #include "commented_out.h"
+#include <real_header.h>
+/* #include <also_commented.h> */
+#include "actual.h"
+"""
+        file_path = tmp_path / "test.cpp"
+        includes = _parse_c_cpp_includes(content, file_path)
+        
+        assert 'real_header.h' in includes
+        assert 'actual.h' in includes
+        assert 'commented_out.h' not in includes
+        assert 'also_commented.h' not in includes
+    
+    def test_whitespace_variations(self, tmp_path):
+        """Test various whitespace patterns."""
+        content = """
+#include<nospace.h>
+#  include  <spaces.h>
+#include   "tabs.h"
+"""
+        file_path = tmp_path / "test.cpp"
+        includes = _parse_c_cpp_includes(content, file_path)
+        
+        assert 'nospace.h' in includes
+        assert 'spaces.h' in includes
+        assert 'tabs.h' in includes
+
+
+class TestParseRustImports:
+    """Tests for Rust import parsing."""
+    
+    def test_use_statements(self, tmp_path):
+        """Test parsing use statements."""
+        content = """
+use std::io;
+use std::fs::File;
+use std::collections::HashMap;
+"""
+        file_path = tmp_path / "test.rs"
+        imports = _parse_rust_imports(content, file_path)
+        
+        assert 'std::io' in imports
+        assert 'std::fs::File' in imports
+        assert 'std::collections::HashMap' in imports
+    
+    def test_mod_statements(self, tmp_path):
+        """Test parsing mod statements."""
+        content = """
+mod utils;
+mod config;
+mod handlers;
+"""
+        file_path = tmp_path / "test.rs"
+        imports = _parse_rust_imports(content, file_path)
+        
+        assert 'utils' in imports
+        assert 'config' in imports
+        assert 'handlers' in imports
+    
+    def test_crate_relative_imports(self, tmp_path):
+        """Test parsing crate-relative imports."""
+        content = """
+use crate::utils::helper;
+use self::local_module;
+use super::parent_module;
+"""
+        file_path = tmp_path / "test.rs"
+        imports = _parse_rust_imports(content, file_path)
+        
+        assert 'crate::utils::helper' in imports
+        assert 'self::local_module' in imports
+        assert 'super::parent_module' in imports
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// use commented::module;
+use actual::module;
+/* use also_commented::module; */
+"""
+        file_path = tmp_path / "test.rs"
+        imports = _parse_rust_imports(content, file_path)
+        
+        assert 'actual::module' in imports
+        assert 'commented::module' not in imports
+        assert 'also_commented::module' not in imports
+
+
+class TestParseGoImports:
+    """Tests for Go import parsing."""
+    
+    def test_single_import(self, tmp_path):
+        """Test parsing single import statements."""
+        content = """
+package main
+
+import "fmt"
+import "os"
+import "net/http"
+"""
+        file_path = tmp_path / "test.go"
+        imports = _parse_go_imports(content, file_path)
+        
+        assert 'fmt' in imports
+        assert 'os' in imports
+        assert 'net/http' in imports
+    
+    def test_multiline_import(self, tmp_path):
+        """Test parsing multi-line import blocks."""
+        content = """
+package main
+
+import (
+    "fmt"
+    "os"
+    "net/http"
+    "github.com/user/repo"
+)
+"""
+        file_path = tmp_path / "test.go"
+        imports = _parse_go_imports(content, file_path)
+        
+        assert 'fmt' in imports
+        assert 'os' in imports
+        assert 'net/http' in imports
+        assert 'github.com/user/repo' in imports
+    
+    def test_aliased_import(self, tmp_path):
+        """Test parsing imports with aliases."""
+        content = """
+import alias "real/package"
+import (
+    f "fmt"
+    . "os"
+)
+"""
+        file_path = tmp_path / "test.go"
+        imports = _parse_go_imports(content, file_path)
+        
+        assert 'real/package' in imports
+        assert 'fmt' in imports
+        assert 'os' in imports
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// import "commented"
+import "actual"
+/* import "also_commented" */
+"""
+        file_path = tmp_path / "test.go"
+        imports = _parse_go_imports(content, file_path)
+        
+        assert 'actual' in imports
+        assert 'commented' not in imports
+        assert 'also_commented' not in imports
+
+
+class TestParseJavaImports:
+    """Tests for Java import parsing."""
+    
+    def test_simple_imports(self, tmp_path):
+        """Test parsing simple import statements."""
+        content = """
+package com.example;
+
+import java.util.List;
+import java.io.File;
+import javax.swing.JFrame;
+"""
+        file_path = tmp_path / "Test.java"
+        imports = _parse_java_imports(content, file_path)
+        
+        assert 'java.util.List' in imports
+        assert 'java.io.File' in imports
+        assert 'javax.swing.JFrame' in imports
+    
+    def test_static_imports(self, tmp_path):
+        """Test parsing static imports."""
+        content = """
+import static java.lang.Math.PI;
+import static org.junit.Assert.assertEquals;
+"""
+        file_path = tmp_path / "Test.java"
+        imports = _parse_java_imports(content, file_path)
+        
+        assert 'java.lang.Math.PI' in imports
+        assert 'org.junit.Assert.assertEquals' in imports
+    
+    def test_wildcard_imports(self, tmp_path):
+        """Test parsing wildcard imports."""
+        content = """
+import java.util.*;
+import com.example.myapp.*;
+"""
+        file_path = tmp_path / "Test.java"
+        imports = _parse_java_imports(content, file_path)
+        
+        # Wildcard imports capture the package name
+        assert any('java.util' in imp for imp in imports)
+        assert any('com.example.myapp' in imp for imp in imports)
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// import java.util.commented;
+import java.util.List;
+/* import java.io.commented; */
+"""
+        file_path = tmp_path / "Test.java"
+        imports = _parse_java_imports(content, file_path)
+        
+        assert 'java.util.List' in imports
+        assert 'java.util.commented' not in imports
+        assert 'java.io.commented' not in imports
+
+
+class TestParseCSharpImports:
+    """Tests for C# using statement parsing."""
+    
+    def test_simple_using(self, tmp_path):
+        """Test parsing simple using statements."""
+        content = """
+using System;
+using System.IO;
+using System.Collections.Generic;
+"""
+        file_path = tmp_path / "Test.cs"
+        imports = _parse_csharp_imports(content, file_path)
+        
+        assert 'System' in imports
+        assert 'System.IO' in imports
+        assert 'System.Collections.Generic' in imports
+    
+    def test_using_alias(self, tmp_path):
+        """Test parsing using aliases."""
+        content = """
+using File = System.IO.File;
+using Dict = System.Collections.Generic.Dictionary;
+"""
+        file_path = tmp_path / "Test.cs"
+        imports = _parse_csharp_imports(content, file_path)
+        
+        assert 'System.IO.File' in imports
+        assert 'System.Collections.Generic.Dictionary' in imports
+    
+    def test_third_party_namespaces(self, tmp_path):
+        """Test parsing third-party namespace imports."""
+        content = """
+using Newtonsoft.Json;
+using Microsoft.Extensions.Logging;
+"""
+        file_path = tmp_path / "Test.cs"
+        imports = _parse_csharp_imports(content, file_path)
+        
+        assert 'Newtonsoft.Json' in imports
+        assert 'Microsoft.Extensions.Logging' in imports
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// using System.commented;
+using System.IO;
+/* using System.also_commented; */
+"""
+        file_path = tmp_path / "Test.cs"
+        imports = _parse_csharp_imports(content, file_path)
+        
+        assert 'System.IO' in imports
+        assert 'System.commented' not in imports
+        assert 'System.also_commented' not in imports
+
+
+class TestParseSwiftImports:
+    """Tests for Swift import parsing."""
+    
+    def test_simple_imports(self, tmp_path):
+        """Test parsing simple import statements."""
+        content = """
+import Foundation
+import UIKit
+import SwiftUI
+"""
+        file_path = tmp_path / "Test.swift"
+        imports = _parse_swift_imports(content, file_path)
+        
+        assert 'Foundation' in imports
+        assert 'UIKit' in imports
+        assert 'SwiftUI' in imports
+    
+    def test_typed_imports(self, tmp_path):
+        """Test parsing typed imports."""
+        content = """
+import struct Foundation.URL
+import class UIKit.UIViewController
+import func Darwin.sqrt
+"""
+        file_path = tmp_path / "Test.swift"
+        imports = _parse_swift_imports(content, file_path)
+        
+        assert 'Foundation.URL' in imports
+        assert 'UIKit.UIViewController' in imports
+        assert 'Darwin.sqrt' in imports
+    
+    def test_third_party_imports(self, tmp_path):
+        """Test parsing third-party module imports."""
+        content = """
+import Alamofire
+import SwiftyJSON
+import Kingfisher
+"""
+        file_path = tmp_path / "Test.swift"
+        imports = _parse_swift_imports(content, file_path)
+        
+        assert 'Alamofire' in imports
+        assert 'SwiftyJSON' in imports
+        assert 'Kingfisher' in imports
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that comments are ignored."""
+        content = """
+// import commented
+import Foundation
+/* import also_commented */
+"""
+        file_path = tmp_path / "Test.swift"
+        imports = _parse_swift_imports(content, file_path)
+        
+        assert 'Foundation' in imports
+        assert 'commented' not in imports
+        assert 'also_commented' not in imports
+
+
+class TestParseHTMLCSSReferences:
+    """Tests for HTML/CSS asset reference parsing."""
+    
+    def test_html_href_references(self, tmp_path):
+        """Test parsing HTML href attributes."""
+        content = """
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="images/favicon.ico">
+</head>
+</html>
+"""
+        file_path = tmp_path / "test.html"
+        refs = _parse_html_css_references(content, file_path)
+        
+        assert 'styles.css' in refs
+        assert 'images/favicon.ico' in refs
+    
+    def test_html_src_references(self, tmp_path):
+        """Test parsing HTML src attributes."""
+        content = """
+<img src="images/logo.png" alt="Logo">
+<script src="js/app.js"></script>
+<script src="../vendor/jquery.js"></script>
+"""
+        file_path = tmp_path / "test.html"
+        refs = _parse_html_css_references(content, file_path)
+        
+        assert 'images/logo.png' in refs
+        assert 'js/app.js' in refs
+        assert '../vendor/jquery.js' in refs
+    
+    def test_skip_external_urls(self, tmp_path):
+        """Test that external URLs are skipped."""
+        content = """
+<link rel="stylesheet" href="https://cdn.example.com/style.css">
+<script src="http://example.com/script.js"></script>
+<img src="//cdn.example.com/image.png">
+<link rel="stylesheet" href="local.css">
+"""
+        file_path = tmp_path / "test.html"
+        refs = _parse_html_css_references(content, file_path)
+        
+        assert 'local.css' in refs
+        # External URLs should be filtered out
+        assert not any('cdn.example.com' in ref for ref in refs)
+        assert not any('http' in ref for ref in refs)
+    
+    def test_css_url_references(self, tmp_path):
+        """Test parsing CSS url() references."""
+        content = """
+.background {
+    background-image: url('images/bg.jpg');
+    background: url("../assets/texture.png");
+}
+.icon {
+    content: url(icons/check.svg);
+}
+"""
+        file_path = tmp_path / "test.css"
+        refs = _parse_html_css_references(content, file_path)
+        
+        assert 'images/bg.jpg' in refs
+        assert '../assets/texture.png' in refs
+        assert 'icons/check.svg' in refs
+    
+    def test_skip_data_urls(self, tmp_path):
+        """Test that data URLs are skipped."""
+        content = """
+<img src="data:image/png;base64,iVBORw0KGg...">
+<link rel="stylesheet" href="actual.css">
+"""
+        file_path = tmp_path / "test.html"
+        refs = _parse_html_css_references(content, file_path)
+        
+        assert 'actual.css' in refs
+        assert not any('data:' in ref for ref in refs)
+
+
+class TestParseSQLIncludes:
+    """Tests for SQL include/import parsing."""
+    
+    def test_postgresql_includes(self, tmp_path):
+        """Test parsing PostgreSQL include statements."""
+        content = """
+-- PostgreSQL includes
+\\i schema.sql
+\\include migrations/001_init.sql
+"""
+        file_path = tmp_path / "test.sql"
+        includes = _parse_sql_includes(content, file_path)
+        
+        assert 'schema.sql' in includes
+        assert 'migrations/001_init.sql' in includes
+    
+    def test_mysql_includes(self, tmp_path):
+        """Test parsing MySQL source statements."""
+        content = """
+-- MySQL includes
+SOURCE schema.sql;
+\\. migrations/002_update.sql
+"""
+        file_path = tmp_path / "test.sql"
+        includes = _parse_sql_includes(content, file_path)
+        
+        assert 'schema.sql' in includes
+        assert 'migrations/002_update.sql' in includes
+    
+    def test_sqlserver_exec_patterns(self, tmp_path):
+        """Test parsing SQL Server EXEC patterns."""
+        content = """
+EXEC('script.sql');
+EXECUTE sp_executesql N'file "stored_proc.sql"';
+"""
+        file_path = tmp_path / "test.sql"
+        includes = _parse_sql_includes(content, file_path)
+        
+        # Should capture .sql file references
+        assert any('.sql' in inc for inc in includes)
+    
+    def test_ignore_comments(self, tmp_path):
+        """Test that SQL comments are ignored."""
+        content = """
+-- \\i commented.sql
+\\i actual.sql
+/* \\include also_commented.sql */
+"""
+        file_path = tmp_path / "test.sql"
+        includes = _parse_sql_includes(content, file_path)
+        
+        assert 'actual.sql' in includes
+        assert 'commented.sql' not in includes
+        assert 'also_commented.sql' not in includes
+
+
+class TestResolveCCppInclude:
+    """Tests for C/C++ include resolution."""
+    
+    def test_relative_include(self, tmp_path):
+        """Test resolving includes relative to source file."""
+        # Create test file structure
+        source_file = tmp_path / "src" / "main.cpp"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        header_file = tmp_path / "src" / "header.h"
+        header_file.touch()
+        
+        resolved = _resolve_c_cpp_include("header.h", source_file, tmp_path)
+        assert resolved == header_file
+    
+    def test_subdirectory_include(self, tmp_path):
+        """Test resolving includes in subdirectories."""
+        source_file = tmp_path / "src" / "main.cpp"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        subdir = tmp_path / "src" / "utils"
+        subdir.mkdir()
+        header_file = subdir / "helper.h"
+        header_file.touch()
+        
+        resolved = _resolve_c_cpp_include("utils/helper.h", source_file, tmp_path)
+        assert resolved == header_file
+    
+    def test_include_directory(self, tmp_path):
+        """Test resolving includes from include directory."""
+        source_file = tmp_path / "src" / "main.cpp"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        include_dir = tmp_path / "include"
+        include_dir.mkdir()
+        header_file = include_dir / "mylib.h"
+        header_file.touch()
+        
+        resolved = _resolve_c_cpp_include("mylib.h", source_file, tmp_path)
+        assert resolved == header_file
+    
+    def test_missing_include(self, tmp_path):
+        """Test that missing includes return None."""
+        source_file = tmp_path / "main.cpp"
+        source_file.touch()
+        
+        resolved = _resolve_c_cpp_include("nonexistent.h", source_file, tmp_path)
+        assert resolved is None
+    
+    def test_system_header(self, tmp_path):
+        """Test that system headers return None."""
+        source_file = tmp_path / "main.cpp"
+        source_file.touch()
+        
+        # System headers won't be in the repo
+        resolved = _resolve_c_cpp_include("stdio.h", source_file, tmp_path)
+        assert resolved is None
+
+
+class TestResolveRustImport:
+    """Tests for Rust import resolution."""
+    
+    def test_mod_same_directory(self, tmp_path):
+        """Test resolving mod statement to sibling file."""
+        source_file = tmp_path / "src" / "main.rs"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        module_file = tmp_path / "src" / "utils.rs"
+        module_file.touch()
+        
+        resolved = _resolve_rust_import("utils", source_file, tmp_path)
+        assert resolved == module_file
+    
+    def test_mod_directory_with_mod_rs(self, tmp_path):
+        """Test resolving mod to directory with mod.rs."""
+        source_file = tmp_path / "src" / "main.rs"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        module_dir = tmp_path / "src" / "handlers"
+        module_dir.mkdir()
+        mod_file = module_dir / "mod.rs"
+        mod_file.touch()
+        
+        resolved = _resolve_rust_import("handlers", source_file, tmp_path)
+        assert resolved == mod_file
+    
+    def test_crate_relative_import(self, tmp_path):
+        """Test that crate-relative imports resolve from src root."""
+        # Create src/lib.rs
+        lib_file = tmp_path / "src" / "lib.rs"
+        lib_file.parent.mkdir(parents=True)
+        lib_file.touch()
+        
+        # Create src/utils.rs
+        utils_file = tmp_path / "src" / "utils.rs"
+        utils_file.touch()
+        
+        # Source file in subdirectory
+        source_file = tmp_path / "src" / "subdir" / "mod.rs"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        resolved = _resolve_rust_import("crate::utils", source_file, tmp_path)
+        assert resolved == utils_file
+    
+    def test_stdlib_returns_none(self, tmp_path):
+        """Test that stdlib imports return None."""
+        source_file = tmp_path / "src" / "main.rs"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        resolved = _resolve_rust_import("std::io", source_file, tmp_path)
+        assert resolved is None
+    
+    def test_missing_module(self, tmp_path):
+        """Test that missing modules return None."""
+        source_file = tmp_path / "src" / "main.rs"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        resolved = _resolve_rust_import("nonexistent", source_file, tmp_path)
+        assert resolved is None
+
+
+class TestResolveHTMLCSSReference:
+    """Tests for HTML/CSS reference resolution."""
+    
+    def test_relative_reference(self, tmp_path):
+        """Test resolving relative references."""
+        source_file = tmp_path / "index.html"
+        source_file.touch()
+        
+        css_file = tmp_path / "style.css"
+        css_file.touch()
+        
+        resolved = _resolve_html_css_reference("./style.css", source_file, tmp_path)
+        assert resolved == css_file
+    
+    def test_subdirectory_reference(self, tmp_path):
+        """Test resolving references in subdirectories."""
+        source_file = tmp_path / "index.html"
+        source_file.touch()
+        
+        img_dir = tmp_path / "images"
+        img_dir.mkdir()
+        img_file = img_dir / "logo.png"
+        img_file.touch()
+        
+        resolved = _resolve_html_css_reference("images/logo.png", source_file, tmp_path)
+        assert resolved == img_file
+    
+    def test_parent_directory_reference(self, tmp_path):
+        """Test resolving references to parent directories."""
+        pages_dir = tmp_path / "pages"
+        pages_dir.mkdir()
+        source_file = pages_dir / "about.html"
+        source_file.touch()
+        
+        css_file = tmp_path / "style.css"
+        css_file.touch()
+        
+        resolved = _resolve_html_css_reference("../style.css", source_file, tmp_path)
+        assert resolved == css_file
+    
+    def test_missing_reference(self, tmp_path):
+        """Test that missing references return None."""
+        source_file = tmp_path / "index.html"
+        source_file.touch()
+        
+        resolved = _resolve_html_css_reference("nonexistent.css", source_file, tmp_path)
+        assert resolved is None
+
+
+class TestResolveSQLInclude:
+    """Tests for SQL include resolution."""
+    
+    def test_relative_include(self, tmp_path):
+        """Test resolving includes relative to source file."""
+        source_file = tmp_path / "scripts" / "main.sql"
+        source_file.parent.mkdir(parents=True)
+        source_file.touch()
+        
+        schema_file = tmp_path / "scripts" / "schema.sql"
+        schema_file.touch()
+        
+        resolved = _resolve_sql_include("schema.sql", source_file, tmp_path)
+        assert resolved == schema_file
+    
+    def test_sql_directory(self, tmp_path):
+        """Test resolving includes from sql directory."""
+        source_file = tmp_path / "main.sql"
+        source_file.touch()
+        
+        sql_dir = tmp_path / "sql"
+        sql_dir.mkdir()
+        migration_file = sql_dir / "001_init.sql"
+        migration_file.touch()
+        
+        resolved = _resolve_sql_include("001_init.sql", source_file, tmp_path)
+        assert resolved == migration_file
+    
+    def test_migrations_directory(self, tmp_path):
+        """Test resolving includes from migrations directory."""
+        source_file = tmp_path / "main.sql"
+        source_file.touch()
+        
+        migrations_dir = tmp_path / "migrations"
+        migrations_dir.mkdir()
+        migration_file = migrations_dir / "002_update.sql"
+        migration_file.touch()
+        
+        resolved = _resolve_sql_include("002_update.sql", source_file, tmp_path)
+        assert resolved == migration_file
+    
+    def test_missing_include(self, tmp_path):
+        """Test that missing includes return None."""
+        source_file = tmp_path / "main.sql"
+        source_file.touch()
+        
+        resolved = _resolve_sql_include("nonexistent.sql", source_file, tmp_path)
+        assert resolved is None
