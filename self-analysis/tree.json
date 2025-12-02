@@ -4,6 +4,40 @@
   "children": [
     {
       "type": "directory",
+      "name": ".github",
+      "children": [
+        {
+          "type": "directory",
+          "name": "af-config",
+          "children": [
+            {
+              "type": "file",
+              "name": "license-header.config.json"
+            },
+            {
+              "type": "file",
+              "name": "LICENSE_HEADER"
+            },
+            {
+              "type": "file",
+              "name": "repo-analyzer.config.json"
+            }
+          ]
+        },
+        {
+          "type": "directory",
+          "name": "workflows",
+          "children": [
+            {
+              "type": "file",
+              "name": "af_maintenance.yml"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "directory",
       "name": ".pytest_cache",
       "children": [
         {
@@ -55,6 +89,10 @@
         {
           "type": "file",
           "name": "file_summary.py"
+        },
+        {
+          "type": "file",
+          "name": "language_registry.py"
         },
         {
           "type": "file",
@@ -141,6 +179,10 @@
         {
           "type": "file",
           "name": "test_file_summary.py"
+        },
+        {
+          "type": "file",
+          "name": "test_language_registry.py"
         },
         {
           "type": "file",

@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "total_files": 10,
+  "total_files": 12,
   "files": [
     {
       "schema_version": "2.0",
@@ -11,7 +11,7 @@
       "summary": "Python module initialization (role: module-init)",
       "summary_text": "Python module initialization (role: module-init)",
       "metrics": {
-        "size_bytes": 149,
+        "size_bytes": 311,
         "loc": 6,
         "todo_count": 0
       }
@@ -25,8 +25,8 @@
       "summary": "Python command-line interface (role: cli)",
       "summary_text": "Python command-line interface (role: cli)",
       "metrics": {
-        "size_bytes": 17546,
-        "loc": 346,
+        "size_bytes": 19546,
+        "loc": 372,
         "todo_count": 4
       }
     },
@@ -39,7 +39,7 @@
       "summary": "Python module for dependency graph",
       "summary_text": "Python module for dependency graph",
       "metrics": {
-        "size_bytes": 34241,
+        "size_bytes": 34403,
         "loc": 603,
         "todo_count": 0
       }
@@ -53,9 +53,23 @@
       "summary": "Python module for file summary",
       "summary_text": "Python module for file summary",
       "metrics": {
-        "size_bytes": 35100,
-        "loc": 643,
+        "size_bytes": 46705,
+        "loc": 866,
         "todo_count": 8
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "repo_analyzer/language_registry.py",
+      "language": "Python",
+      "role": "implementation",
+      "role_justification": "general implementation file (default classification)",
+      "summary": "Python module for language registry",
+      "summary_text": "Python module for language registry",
+      "metrics": {
+        "size_bytes": 19732,
+        "loc": 492,
+        "todo_count": 0
       }
     },
     {
@@ -67,7 +81,7 @@
       "summary": "Python module for stdlib classification",
       "summary_text": "Python module for stdlib classification",
       "metrics": {
-        "size_bytes": 8568,
+        "size_bytes": 8730,
         "loc": 138,
         "todo_count": 0
       }
@@ -81,7 +95,7 @@
       "summary": "Python module for tree report",
       "summary_text": "Python module for tree report",
       "metrics": {
-        "size_bytes": 7579,
+        "size_bytes": 7741,
         "loc": 180,
         "todo_count": 0
       }
@@ -95,7 +109,7 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 44827,
+        "size_bytes": 44989,
         "loc": 976,
         "todo_count": 0
       }
@@ -109,9 +123,23 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 68568,
-        "loc": 1357,
+        "size_bytes": 88178,
+        "loc": 1703,
         "todo_count": 18
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "path": "tests/test_language_registry.py",
+      "language": "Python",
+      "role": "test",
+      "role_justification": "filename starts with 'test_'",
+      "summary": "Python test file (role: test)",
+      "summary_text": "Python test file (role: test)",
+      "metrics": {
+        "size_bytes": 19590,
+        "loc": 362,
+        "todo_count": 0
       }
     },
     {
@@ -123,7 +151,7 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 11765,
+        "size_bytes": 11927,
         "loc": 190,
         "todo_count": 0
       }
@@ -137,7 +165,7 @@
       "summary": "Python test file (role: test)",
       "summary_text": "Python test file (role: test)",
       "metrics": {
-        "size_bytes": 13936,
+        "size_bytes": 14098,
         "loc": 288,
         "todo_count": 0
       }

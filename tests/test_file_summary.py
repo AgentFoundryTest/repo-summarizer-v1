@@ -1914,3 +1914,677 @@ import os
         # but we're testing the dependency extraction error handling
         # In practice, this would be caught by file scanning
         pass  # This test validates the error handling exists
+
+
+class TestLanguageSpecificHeuristics:
+    """Tests for language-specific heuristics added for new languages."""
+    
+    # Common include patterns for multi-language tests
+    ALL_NEW_LANGUAGES_PATTERNS = [
+        '*.c', '*.cpp', '*.rs', '*.go', '*.java', 
+        '*.html', '*.css', '*.sql', '*.cs', '*.swift'
+    ]
+    
+    def test_c_header_files(self, tmp_path):
+        """Test C header file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Regular header
+        file_path = root / 'utils.h'
+        summary = _generate_heuristic_summary(file_path, root)
+        # Should identify as a header file (not testing specific format)
+        assert 'header' in summary.lower() and 'file' in summary.lower()
+        assert 'C' in summary or 'C++' in summary
+        
+        # Internal header
+        file_path = root / 'utils_internal.h'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'internal' in summary.lower()
+        assert 'header' in summary.lower()
+        
+        # Types header
+        file_path = root / 'types.h'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'types' in summary.lower()
+        assert 'header' in summary.lower()
+    
+    def test_c_implementation_files(self, tmp_path):
+        """Test C implementation file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Main entry point
+        file_path = root / 'main.c'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'entry point' in summary.lower()
+        
+        # Regular implementation
+        file_path = root / 'utils.c'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'implementation' in summary.lower()
+        assert 'C' in summary
+    
+    def test_cpp_files(self, tmp_path):
+        """Test C++ file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # C++ header
+        file_path = root / 'MyClass.hpp'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'header' in summary.lower()
+        assert 'C++' in summary
+        
+        # C++ implementation
+        file_path = root / 'MyClass.cpp'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'implementation' in summary.lower()
+        assert 'C++' in summary
+    
+    def test_rust_files(self, tmp_path):
+        """Test Rust file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        src = root / 'src'
+        src.mkdir()
+        
+        # lib.rs
+        file_path = src / 'lib.rs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'library entry point' in summary.lower()
+        assert 'Rust' in summary
+        
+        # main.rs
+        file_path = src / 'main.rs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'binary entry point' in summary.lower()
+        assert 'Rust' in summary
+        
+        # mod.rs
+        file_path = src / 'mod.rs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'module declaration' in summary.lower()
+        assert 'Rust' in summary
+        
+        # Regular module
+        file_path = src / 'utils.rs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'module implementation' in summary.lower()
+        assert 'Rust' in summary
+    
+    def test_go_files(self, tmp_path):
+        """Test Go file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # main.go
+        file_path = root / 'main.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'entry point' in summary.lower()
+        assert 'Go' in summary
+        
+        # Test file
+        file_path = root / 'utils_test.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'test' in summary.lower()
+        assert 'Go' in summary
+        
+        # cmd directory
+        cmd = root / 'cmd'
+        cmd.mkdir()
+        file_path = cmd / 'server.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'command-line application' in summary.lower()
+        assert 'Go' in summary
+        
+        # pkg directory
+        pkg = root / 'pkg'
+        pkg.mkdir()
+        file_path = pkg / 'client.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'library package' in summary.lower()
+        assert 'Go' in summary
+    
+    def test_java_files(self, tmp_path):
+        """Test Java file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Interface with I prefix
+        file_path = root / 'IUserService.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'interface' in summary.lower()
+        assert 'Java' in summary
+        
+        # Interface with Interface suffix
+        file_path = root / 'UserServiceInterface.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'interface' in summary.lower()
+        
+        # Abstract class
+        file_path = root / 'AbstractService.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'abstract' in summary.lower()
+        
+        # Exception
+        file_path = root / 'CustomException.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'exception' in summary.lower()
+        
+        # Test class
+        file_path = root / 'UserServiceTest.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'test' in summary.lower()
+        
+        # Controller
+        file_path = root / 'UserController.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'controller' in summary.lower()
+        
+        # Service
+        file_path = root / 'UserService.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'service' in summary.lower()
+        
+        # Repository
+        file_path = root / 'UserRepository.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'data access' in summary.lower()
+        
+        # Entity
+        file_path = root / 'UserEntity.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'model' in summary.lower() or 'entity' in summary.lower()
+        
+        # Util
+        file_path = root / 'StringUtils.java'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'utility' in summary.lower()
+    
+    def test_csharp_files(self, tmp_path):
+        """Test C# file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Interface with I prefix
+        file_path = root / 'IUserService.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'interface' in summary.lower()
+        assert 'C#' in summary
+        
+        # Controller
+        file_path = root / 'UserController.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'controller' in summary.lower()
+        
+        # Service
+        file_path = root / 'UserService.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'service' in summary.lower()
+        
+        # ViewModel
+        file_path = root / 'UserViewModel.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'view model' in summary.lower()
+        
+        # Extension methods
+        file_path = root / 'StringExtensions.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'extension' in summary.lower()
+        
+        # Program entry point
+        file_path = root / 'Program.cs'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'entry point' in summary.lower()
+    
+    def test_swift_files(self, tmp_path):
+        """Test Swift file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # View Controller
+        file_path = root / 'UserViewController.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'view controller' in summary.lower()
+        assert 'Swift' in summary
+        
+        # View
+        file_path = root / 'UserView.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'view' in summary.lower()
+        
+        # ViewModel
+        file_path = root / 'UserViewModel.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'view model' in summary.lower()
+        
+        # Model
+        file_path = root / 'UserModel.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'model' in summary.lower()
+        
+        # Manager
+        file_path = root / 'NetworkManager.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'manager' in summary.lower()
+        
+        # Delegate
+        file_path = root / 'AppDelegate.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'delegate' in summary.lower()
+        
+        # Protocol
+        file_path = root / 'UserProtocol.swift'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'protocol' in summary.lower()
+    
+    def test_html_files(self, tmp_path):
+        """Test HTML file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Index page
+        file_path = root / 'index.html'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'main page' in summary.lower() or 'entry point' in summary.lower()
+        assert 'HTML' in summary
+        
+        # Template
+        templates = root / 'templates'
+        templates.mkdir()
+        file_path = templates / 'user.html'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'template' in summary.lower()
+        
+        # Component
+        file_path = root / 'user-component.html'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'component' in summary.lower()
+        
+        # Partial
+        file_path = root / 'header-partial.html'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'partial' in summary.lower()
+        
+        # Layout
+        file_path = root / 'layout.html'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'layout' in summary.lower()
+    
+    def test_css_files(self, tmp_path):
+        """Test CSS file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Main stylesheet
+        file_path = root / 'style.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'main stylesheet' in summary.lower()
+        assert 'CSS' in summary
+        
+        # Theme
+        file_path = root / 'theme-dark.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'theme' in summary.lower()
+        
+        # Variables
+        file_path = root / 'variables.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'variable' in summary.lower()
+        
+        # Reset
+        file_path = root / 'reset.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'reset' in summary.lower()
+        
+        # Responsive
+        file_path = root / 'responsive.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'responsive' in summary.lower()
+        
+        # Component styles
+        components = root / 'components'
+        components.mkdir()
+        file_path = components / 'button.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'component' in summary.lower()
+        
+        # Minified CSS (should have .min or -min in name)
+        file_path = root / 'style.min.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'minified' in summary.lower()
+    
+    def test_sql_files(self, tmp_path):
+        """Test SQL file heuristics."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Migration
+        migrations = root / 'migrations'
+        migrations.mkdir()
+        file_path = migrations / '001_create_users.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'migration' in summary.lower()
+        assert 'SQL' in summary
+        
+        # Schema
+        file_path = root / 'schema.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'schema' in summary.lower()
+        
+        # Seed data
+        file_path = root / 'seed_data.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'seed' in summary.lower()
+        
+        # View
+        file_path = root / 'v_user_stats.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'view' in summary.lower()
+        
+        # Stored procedure
+        file_path = root / 'sp_get_user.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'stored procedure' in summary.lower() or 'procedure' in summary.lower()
+        
+        # Function
+        file_path = root / 'fn_calculate_age.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'function' in summary.lower()
+        
+        # Query
+        file_path = root / 'user_queries.sql'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'query' in summary.lower() or 'queries' in summary.lower()
+    
+    def test_mixed_language_repository(self, tmp_path):
+        """Test that mixed-language repositories produce deterministic summaries."""
+        from repo_analyzer.file_summary import generate_file_summaries
+        import json
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Create files in different languages
+        (source / 'main.c').touch()
+        (source / 'utils.cpp').touch()
+        (source / 'lib.rs').touch()
+        (source / 'server.go').touch()
+        (source / 'UserService.java').touch()
+        (source / 'index.html').touch()
+        (source / 'style.css').touch()
+        (source / 'schema.sql').touch()
+        (source / 'Program.cs').touch()
+        (source / 'AppDelegate.swift').touch()
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        # Generate summaries twice to verify determinism
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data1 = json.loads(json_file.read_text())
+        
+        # Regenerate
+        json_file.unlink()
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
+        )
+        
+        data2 = json.loads(json_file.read_text())
+        
+        # Verify deterministic output
+        assert data1 == data2
+        
+        # Verify all languages are represented
+        languages = {entry['language'] for entry in data1['files']}
+        # Should have all 10 distinct languages
+        expected_languages = {'C', 'C++', 'Rust', 'Go', 'Java', 'HTML', 'CSS', 'SQL', 'C#', 'Swift'}
+        assert languages == expected_languages
+        
+        # Verify all summaries are language-specific
+        for entry in data1['files']:
+            assert entry['language'] in entry['summary']
+            # Each file should have received a language-specific heuristic or appropriate fallback
+            # We don't test for specific patterns here as that's covered in individual tests
+    
+    def test_header_implementation_pairs(self, tmp_path):
+        """Test that C/C++ header and implementation files get appropriate summaries."""
+        from repo_analyzer.file_summary import generate_file_summaries
+        import json
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Create header/implementation pairs
+        (source / 'utils.h').touch()
+        (source / 'utils.c').touch()
+        (source / 'MyClass.hpp').touch()
+        (source / 'MyClass.cpp').touch()
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=['*.h', '*.c', '*.hpp', '*.cpp']
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        # Find the files
+        summaries = {entry['path']: entry['summary'] for entry in data['files']}
+        
+        # Verify distinct summaries
+        assert 'header' in summaries['utils.h'].lower()
+        assert 'implementation' in summaries['utils.c'].lower()
+        assert 'header' in summaries['MyClass.hpp'].lower()
+        assert 'implementation' in summaries['MyClass.cpp'].lower()
+        
+        # Headers and implementations should have different descriptions
+        assert summaries['utils.h'] != summaries['utils.c']
+        assert summaries['MyClass.hpp'] != summaries['MyClass.cpp']
+    
+    def test_regression_python_js_unchanged(self, tmp_path):
+        """Test that existing Python/JS/TS heuristics still work correctly."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Python test file
+        file_path = root / 'test_main.py'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'test' in summary.lower()
+        assert 'Python' in summary
+        
+        # JS component
+        file_path = root / 'Button.jsx'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'component' in summary.lower()
+        assert 'JavaScript' in summary
+        
+        # TS file
+        file_path = root / 'utils.ts'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'TypeScript' in summary
+    
+    def test_non_standard_extensions(self, tmp_path):
+        """Test that non-standard extensions (e.g., .cxx) work correctly."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # .cxx extension (C++)
+        file_path = root / 'MyClass.cxx'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'C++' in summary
+        assert 'implementation' in summary.lower()
+    
+    def test_large_generated_files(self, tmp_path):
+        """Test that generated/large files don't cause timeouts."""
+        from repo_analyzer.file_summary import _create_structured_summary
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Large SQL migration
+        file_path = source / 'migration_001.sql'
+        large_content = "-- Migration\n" + "INSERT INTO users VALUES (1, 'user');\n" * 10000
+        file_path.write_text(large_content)
+        
+        # Should complete without timeout
+        summary = _create_structured_summary(
+            file_path, source, detail_level='standard', include_legacy=True
+        )
+        
+        assert 'migration' in summary['summary'].lower()
+        assert 'SQL' in summary['language']
+    
+    def test_interface_name_detection(self, tmp_path):
+        """Test that interface name detection avoids false positives."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Valid interface names (should be detected as interfaces)
+        valid_interfaces = ['IUser.java', 'IFoo.cs', 'IRepository.java']
+        for filename in valid_interfaces:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            assert 'interface' in summary.lower(), f"{filename} should be detected as interface"
+        
+        # False positives (should NOT be detected as interfaces)
+        false_positives = ['IFrame.java', 'IPhone.swift', 'ICloud.cs', 'IO.java']
+        for filename in false_positives:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            # Should not contain "interface" unless it has Interface suffix
+            if 'Interface' not in filename:
+                assert 'interface' not in summary.lower(), f"{filename} should NOT be detected as interface"
+    
+    def test_css_minified_detection(self, tmp_path):
+        """Test that CSS minification detection avoids false positives."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Valid minified CSS (should be detected)
+        valid_minified = ['style.min.css', 'bootstrap-min.css']
+        for filename in valid_minified:
+            # Create with .min in the stem to test
+            stem = filename.replace('.css', '')
+            file_path = root / filename
+            # Simulate by checking the name
+            if '.min' in stem or '-min' in stem:
+                # This will be detected as minified
+                pass
+        
+        # False positives (should NOT be detected as minified)
+        false_positives = ['admin.css', 'determine.css', 'examine.css']
+        for filename in false_positives:
+            file_path = root / filename
+            summary = _generate_heuristic_summary(file_path, root)
+            assert 'minified' not in summary.lower(), f"{filename} should NOT be detected as minified"
+    
+    def test_go_directory_structure_deep_paths(self, tmp_path):
+        """Test that Go directory detection works anywhere in path, not just root."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Deep cmd directory
+        cmd_deep = root / 'project' / 'cmd' / 'app'
+        cmd_deep.mkdir(parents=True)
+        file_path = cmd_deep / 'main.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'command-line application' in summary.lower()
+        
+        # Deep pkg directory
+        pkg_deep = root / 'project' / 'pkg' / 'utils'
+        pkg_deep.mkdir(parents=True)
+        file_path = pkg_deep / 'helpers.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'library package' in summary.lower()
+        
+        # Deep internal directory
+        internal_deep = root / 'project' / 'internal' / 'db'
+        internal_deep.mkdir(parents=True)
+        file_path = internal_deep / 'connection.go'
+        summary = _generate_heuristic_summary(file_path, root)
+        assert 'internal package' in summary.lower()
+    
+    def test_css_component_classification_order(self, tmp_path):
+        """Test that component styles are detected before more generic patterns."""
+        from repo_analyzer.file_summary import _generate_heuristic_summary
+        
+        root = tmp_path
+        
+        # Component with 'style' in name should still be classified as component
+        components_dir = root / 'components'
+        components_dir.mkdir()
+        file_path = components_dir / 'button-style.css'
+        summary = _generate_heuristic_summary(file_path, root)
+        # Should be classified as component, not main stylesheet
+        assert 'component' in summary.lower()
+        assert 'main stylesheet' not in summary.lower()
+    
+    def test_mixed_language_with_content(self, tmp_path):
+        """Test mixed-language repository with actual file content."""
+        from repo_analyzer.file_summary import generate_file_summaries
+        import json
+        
+        source = tmp_path / 'source'
+        source.mkdir()
+        
+        # Create files with actual content
+        (source / 'main.c').write_text('int main() { return 0; }')
+        (source / 'utils.cpp').write_text('// C++ utility functions\nvoid helper() {}')
+        (source / 'lib.rs').write_text('// Rust library\npub fn foo() {}')
+        (source / 'server.go').write_text('package main\nimport "fmt"')
+        (source / 'UserService.java').write_text('public class UserService {}')
+        (source / 'index.html').write_text('<html><body>Hello</body></html>')
+        (source / 'style.css').write_text('body { margin: 0; }')
+        (source / 'schema.sql').write_text('CREATE TABLE users (id INT);')
+        (source / 'Program.cs').write_text('class Program { static void Main() {} }')
+        (source / 'AppDelegate.swift').write_text('class AppDelegate: UIResponder {}')
+        
+        output = tmp_path / 'output'
+        output.mkdir()
+        
+        generate_file_summaries(
+            source,
+            output,
+            include_patterns=self.ALL_NEW_LANGUAGES_PATTERNS
+        )
+        
+        json_file = output / 'file-summaries.json'
+        data = json.loads(json_file.read_text())
+        
+        # Verify all files were processed
+        assert data['total_files'] == 10
+        
+        # Verify all have content-based metrics (LOC > 0 since files have content)
+        for entry in data['files']:
+            if 'metrics' in entry:
+                assert entry['metrics']['size_bytes'] > 0

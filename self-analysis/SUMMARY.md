@@ -36,6 +36,21 @@ At the detailed level, the tool extracts:
 - Export statements (for JavaScript/TypeScript)
 - Structural warnings for files with syntax issues
 
+### 🌐 Language-Specific Heuristics
+The analyzer provides intelligent, language-aware file summaries for:
+- **C/C++**: Headers, implementations, templates, internal files
+- **Rust**: Library/binary entry points, modules, tests, benchmarks
+- **Go**: Main packages, tests, cmd/pkg/internal patterns
+- **Java**: Interfaces, abstract classes, MVC patterns, utilities
+- **C#**: Interfaces, controllers, services, MVVM patterns
+- **Swift**: View controllers, views, models, delegates, protocols
+- **HTML**: Pages, templates, components, partials, layouts
+- **CSS**: Stylesheets, themes, variables, components
+- **SQL**: Migrations, schemas, views, procedures, functions
+- Plus general-purpose heuristics for all languages
+
+Each language's conventions are recognized without code parsing, providing fast, deterministic analysis.
+
 ## Analysis Components
 
 ### Directory Tree

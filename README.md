@@ -263,6 +263,119 @@ The language registry maintains full backward compatibility:
 
 Repositories can adopt the language registry incrementally without disrupting existing workflows.
 
+### File Summary Heuristics
+
+The analyzer generates intelligent, language-specific summaries for files based on naming conventions, path patterns, and language-specific idioms. This provides detailed insight without requiring code parsing.
+
+#### Language-Specific Detection
+
+Each supported language has tailored heuristics that recognize common patterns:
+
+**C/C++:**
+- Headers (.h, .hpp) vs implementations (.c, .cpp)
+- Internal headers (`*_internal.h`, files in `internal/`)
+- Type definition headers (`types.h`, `defs.h`)
+- Interface headers (names starting with 'I' or containing 'interface')
+- Template implementations (.tpp, .tcc)
+- Main entry points (`main.c`, `main.cpp`)
+
+**Rust:**
+- Library entry points (`lib.rs`)
+- Binary entry points (`main.rs`)
+- Module declarations (`mod.rs`)
+- Test modules (`*_test.rs`, files in `tests/`)
+- Benchmarks (files in `benches/`)
+- Examples (files in `examples/`)
+- Binary implementations (`src/bin/`)
+
+**Go:**
+- Main packages (`main.go`)
+- Test files (`*_test.go`)
+- Internal packages (files in `internal/` or `*_internal.go`)
+- Command-line applications (`cmd/`)
+- Library packages (`pkg/`)
+- Protocol buffer definitions (`.pb.go`, `*proto.go`)
+
+**Java:**
+- Interfaces (names starting with 'I' or ending with 'Interface')
+- Abstract classes (`Abstract*`, `*Abstract`)
+- Exception classes (`*Exception`)
+- Test classes (`*Test`, `*Tests`)
+- Controllers, Services, Repositories, DAOs
+- Entity/Model classes
+- Utility classes (`*Util`, `*Utils`, `*Helper`)
+
+**C#:**
+- Interfaces (names starting with 'I' or ending with 'Interface')
+- Controllers, Services, Repositories
+- ViewModels (MVVM pattern)
+- Extension methods (`*Extensions`)
+- Program entry point (`Program.cs`)
+
+**Swift:**
+- View controllers (`*ViewController`, `*Controller`)
+- Views, ViewModels (MVVM pattern)
+- Models, Services, Managers
+- Delegates (`*Delegate`)
+- Protocols (`*Protocol`)
+- Type extensions (`*Extension`)
+
+**HTML:**
+- Main pages (`index.html`, `home.html`)
+- Templates (files in `templates/` or `*template.html`)
+- Components (files in `components/` or `*component.html`)
+- Partials (`*partial.html`, files in `partials/`)
+- Layouts (`*layout.html`)
+- Email templates (files in `email/`)
+
+**CSS:**
+- Main stylesheets (`style.css`, `styles.css`, `main.css`)
+- Themes (`*theme*.css`)
+- Variables/constants (`variables.css`, `vars.css`)
+- Reset/normalization (`reset.css`, `normalize.css`)
+- Responsive design (`responsive.css`, `*media*.css`)
+- Component styles (files in `components/`)
+- Utility classes (`*util*.css`, `*helper*.css`)
+
+**SQL:**
+- Migrations (files in `migrations/` or `*migration*.sql`)
+- Schema definitions (`schema.sql`, `ddl.sql`, `create.sql`)
+- Seed data (`*seed*.sql`, `*fixture*.sql`)
+- Views (`*view*.sql`, `v_*.sql`)
+- Stored procedures (`*proc*.sql`, `sp_*.sql`)
+- Functions (`*function*.sql`, `fn_*.sql`)
+- Triggers (`*trigger*.sql`)
+- Query definitions (`*query*.sql`, `*queries*.sql`)
+
+#### Fallback Heuristics
+
+For files that don't match language-specific patterns, the analyzer uses general heuristics:
+- Configuration files (`config.*`, `settings.*`)
+- Test files (`test_*`, `*_test.*`)
+- Main entry points (`main.*`, `index.*`, `app.*`)
+- CLI files (`cli.*`, `command.*`)
+- Utility/helper files (`utils.*`, `util.*`, `helpers.*`)
+- Models, Controllers, Services, Repositories
+- API implementations (`*api*`)
+- Database operations (`*db*`, `*database*`)
+
+#### Limitations and Intentional Non-Support
+
+The heuristics are designed to be **deterministic and fast**, operating only on filenames, extensions, and paths. They intentionally avoid:
+
+- **Parsing file contents** (except for Python/JS/TS at detailed level)
+- **Compiling source code**
+- **External tool dependencies**
+- **Non-deterministic operations**
+
+This means:
+- Generated code may not be distinguished from hand-written code
+- Template files (e.g., `.go.tpl`) fall back to safe defaults
+- Massive generated files (e.g., CSS bundles, SQL migrations) are handled efficiently without timeouts
+- Mixed-language files (e.g., HTML with embedded CSS/JS) show per-file summaries
+
+These trade-offs prioritize **speed, reliability, and determinism** for CI/CD use cases.
+
 ### CLI Arguments
 
 - `-o, --output-dir DIR`: Output directory for analysis reports
