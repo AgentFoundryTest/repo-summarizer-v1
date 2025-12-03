@@ -11,14 +11,21 @@ The Repository Analyzer aims to be a comprehensive, deterministic, and CI/CD-fri
 - **Language-agnostic design** - Easy to add new languages without breaking existing functionality
 - **CI/CD integration** - Fast, reliable, and automatable
 
-## Recently Completed (v0.2.0)
+## Recently Completed
 
+### v0.3.0 (Current)
+✅ **Low-level language support** - C, C++, Rust, Assembly, Perl with symbol extraction  
+✅ **Layered parser architecture** - Regex fallbacks + optional tree-sitter/libclang  
+✅ **CLI auto-detection** - Automatic detection of low-level languages in repositories  
+✅ **Parser configuration** - Fine-grained control over structured vs regex parsing  
+✅ **493+ tests** - Comprehensive test coverage including low-level language fixtures  
+
+### v0.2.0
 ✅ **Multi-language support** - 40+ languages with pluggable language registry  
 ✅ **External dependency classification** - Stdlib vs third-party for 10+ languages  
 ✅ **Enhanced file summaries** - Schema v2.0 with roles, metrics, and structure parsing  
 ✅ **Language configuration** - Fine-grained control over enabled/disabled languages  
-✅ **Comprehensive testing** - 390+ tests including multi-language fixtures  
-✅ **Dependency scanning** - C/C++/Rust/Go/Java/C#/Swift import parsing  
+✅ **Dependency scanning** - Multi-language import parsing and resolution  
 
 ## Short-Term Enhancements (Next 1-2 Iterations)
 
@@ -329,7 +336,9 @@ This roadmap provides **directional guidance**, not commitments:
 
 ## Version History
 
-- **v0.2.0** (Current): Multi-language support, dependency classification, schema v2.0
+- **v0.3.0** (Current): Low-level language support (C, C++, Rust, ASM, Perl) with layered parser architecture
+- **v0.2.1**: Documentation release with walkthrough and roadmap
+- **v0.2.0**: Multi-language support, dependency classification, schema v2.0
 - **v0.1.0**: Initial release with Python/JS/TS support, basic file summaries
 - **Future**: See sections above
 
@@ -345,4 +354,4 @@ Open an issue on GitHub or start a discussion!
 ---
 
 **Last Updated:** December 2025  
-**Current Version:** 0.2.0
+**Current Version:** 0.3.0
