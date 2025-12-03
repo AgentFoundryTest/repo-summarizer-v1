@@ -445,8 +445,9 @@ def parse_c_cpp_symbols(content: str, file_path: Path, language: str) -> ParsedS
             struct_name = match.group(1)
             result.classes.append(f"struct {struct_name}")
     
-    # Extract macros
-    for match in macro_pattern.finditer(content):
+    # Extract macros (use original content to preserve line directives, but they're typically at start of line)
+    # Note: Macros are preprocessor directives and won't appear in comments that were removed
+    for match in macro_pattern.finditer(content_clean):
         macro_name = match.group(1)
         result.variables.append(f"#define {macro_name}")
     
