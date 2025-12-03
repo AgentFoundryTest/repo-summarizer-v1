@@ -388,11 +388,19 @@ def parse_c_cpp_symbols(content: str, file_path: Path, language: str) -> ParsedS
     """
     result = ParsedSymbols(parser_used=ParserType.REGEX_FALLBACK)
     
-    # Remove comments to avoid false positives
-    # Remove single-line comments
-    content_no_single = re.sub(r'//.*?$', '', content, flags=re.MULTILINE)
-    # Remove multi-line comments
-    content_clean = re.sub(r'/\*.*?\*/', '', content_no_single, flags=re.DOTALL)
+    # Remove comments to avoid false positives while preserving string literals
+    # Regex to find comments, string literals, and character literals
+    comment_or_string_pattern = re.compile(
+        r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
+        re.DOTALL | re.MULTILINE
+    )
+    def replacer(match):
+        s = match.group(0)
+        if s.startswith('/'):
+            return " "  # Remove comments
+        else:
+            return s  # Keep strings
+    content_clean = re.sub(comment_or_string_pattern, replacer, content)
     
     # Pattern for function declarations/definitions
     # Matches: return_type function_name(...) or return_type* function_name(...)
@@ -474,11 +482,27 @@ def parse_rust_symbols(content: str, file_path: Path) -> ParsedSymbols:
     """
     result = ParsedSymbols(parser_used=ParserType.REGEX_FALLBACK)
     
-    # Remove comments to avoid false positives
-    # Remove single-line comments
-    content_no_single = re.sub(r'//.*?$', '', content, flags=re.MULTILINE)
-    # Remove multi-line comments (/* ... */)
-    content_clean = re.sub(r'/\*.*?\*/', '', content_no_single, flags=re.DOTALL)
+    # Remove comments to avoid false positives while preserving string literals
+    # Regex to find comments (including nested), and string literals
+    # This is complex due to nested comments and raw strings
+    rust_comment_or_string_pattern = re.compile(
+        r'//.*?$|/\*(?:[^*]|\*(?!/))*\*/|'
+        r'b?"(?:\\.|[^\\"])*"|'
+        r'b?r#*".*?"#*|'
+        r"b?'(?:\\.|[^\\'])*'",
+        re.DOTALL | re.MULTILINE
+    )
+    def rust_replacer(match):
+        s = match.group(0)
+        if s.startswith('/'):
+            return " "  # Remove comments
+        else:
+            return s  # Keep strings
+    
+    # A simple regex for nested comments is very hard. The above is an approximation.
+    # For a truly robust solution, a parser is better.
+    # For now, we can at least handle strings correctly.
+    content_clean = re.sub(rust_comment_or_string_pattern, rust_replacer, content)
     
     # Pattern for function declarations
     # Matches: pub fn name, fn name, pub async fn name, pub unsafe fn name, etc.
@@ -511,7 +535,7 @@ def parse_rust_symbols(content: str, file_path: Path) -> ParsedSymbols:
     # Pattern for impl blocks
     # Matches: impl Name, impl Trait for Name, impl<T> Name
     impl_pattern = re.compile(
-        r'^\s*impl(?:<[^>]+>)?\s+(?:([A-Z][\w]*)|(?:[\w:]+)\s+for\s+([A-Z][\w]*))',
+        r'^\s*impl(?:<[^>]+>)?\s+(?:([\w:]+(?:<[^>]+>)?)|(?:[\w:]+(?:<[^>]+)?)\s+for\s+([\w:]+(?:<[^>]+)?))',
         re.MULTILINE
     )
     

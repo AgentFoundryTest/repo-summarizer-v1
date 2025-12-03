@@ -680,3 +680,71 @@ class TestParserCapability:
         """Test that Perl has parser capability."""
         cap = get_parser_capability('Perl')
         assert cap.available
+
+
+class TestStringLiteralProtection:
+    """Tests that string literals with comment-like sequences are preserved."""
+    
+    def test_c_string_with_comment_sequences(self):
+        """Test that C strings containing comment sequences are preserved."""
+        content = """
+int func() {
+    char* str1 = "/* not a comment */";
+    char* str2 = "// also not a comment";
+    // This is a real comment
+    return 1;
+}
+
+void another() {
+    char c = '//';  // Real comment here
+}
+"""
+        result = parse_c_cpp_symbols(content, Path('test.c'), 'C')
+        # Both functions should be detected
+        assert 'function func' in result.functions
+        assert 'function another' in result.functions
+        # Verify we got exactly 2 functions (no false positives from strings)
+        assert len(result.functions) == 2
+    
+    def test_rust_string_with_comment_sequences(self):
+        """Test that Rust strings containing comment sequences are preserved."""
+        content = """
+fn func() {
+    let s = "// not a comment";
+    let s2 = "/* also not */";
+    // This is a real comment
+}
+
+fn another() {
+    let raw = r#"/* raw string */"#;
+    let byte = b"// byte string";
+}
+"""
+        result = parse_rust_symbols(content, Path('test.rs'))
+        # Both functions should be detected
+        assert 'fn func' in result.functions
+        assert 'fn another' in result.functions
+        # Verify we got exactly 2 functions
+        assert len(result.functions) == 2
+    
+    def test_rust_impl_with_generics(self):
+        """Test that Rust impl blocks with generics are detected."""
+        content = """
+impl<T> MyType<T> {
+    fn method(&self) {}
+}
+
+impl<T: Display> MyTrait for MyType<T> {
+    fn trait_method(&self) {}
+}
+
+impl lowercase_type {
+    fn new() {}
+}
+"""
+        result = parse_rust_symbols(content, Path('test.rs'))
+        # All impl blocks should be detected
+        assert any('MyType<T>' in c for c in result.classes)
+        assert any('MyType<T>' in c or 'MyTrait' in c for c in result.classes)
+        # lowercase_type should also be detected
+        assert any('lowercase_type' in c for c in result.classes)

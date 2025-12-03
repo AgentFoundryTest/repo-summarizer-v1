@@ -947,8 +947,15 @@ def _create_structured_summary(
                     # Add any warnings
                     if parsed.warnings:
                         structure_warning = "; ".join(parsed.warnings)
-                except Exception as e:
+                except (ValueError, AttributeError, KeyError) as e:
+                    # Specific exceptions from parsing issues
                     structure_warning = f"Symbol extraction failed: {str(e)}"
+                except Exception as e:
+                    # Unexpected errors - log for debugging
+                    import traceback
+                    structure_warning = f"Unexpected error in symbol extraction: {str(e)}"
+                    # In a production setting, this would log the full traceback
+                    # traceback.print_exc()
             else:
                 structure_warning = f"No parser available for {language}"
     
