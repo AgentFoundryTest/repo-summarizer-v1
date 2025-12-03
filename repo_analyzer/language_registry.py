@@ -11,7 +11,7 @@ language detection and allows for future extension without modifying core files.
 """
 
 from typing import Dict, List, Set, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 
 @dataclass
@@ -26,6 +26,7 @@ class LanguageCapability:
         has_dependency_scanner: Whether the language has a dependency scanner
         enabled: Whether analysis is enabled for this language
         priority: Priority for resolving extension conflicts (higher = preferred)
+        parser_capabilities: Optional dict describing parser features (symbols, asm_labels, etc.)
     """
     name: str
     extensions: Set[str]
@@ -33,10 +34,11 @@ class LanguageCapability:
     has_dependency_scanner: bool = False
     enabled: bool = True
     priority: int = 0
+    parser_capabilities: Optional[Dict[str, bool]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "name": self.name,
             "extensions": sorted(self.extensions),
             "has_structure_parser": self.has_structure_parser,
@@ -44,6 +46,9 @@ class LanguageCapability:
             "enabled": self.enabled,
             "priority": self.priority
         }
+        if self.parser_capabilities:
+            result["parser_capabilities"] = self.parser_capabilities
+        return result
 
 
 class LanguageRegistry:
@@ -93,22 +98,34 @@ class LanguageRegistry:
             priority=10
         ))
         
-        # C - basic support with dependency scanning
+        # C - enhanced with parser capability flags
         self.register(LanguageCapability(
             name="C",
             extensions={".c"},
-            has_structure_parser=False,
+            has_structure_parser=False,  # Will be True with tree-sitter/libclang
             has_dependency_scanner=True,
-            priority=8
+            priority=8,
+            parser_capabilities={
+                "can_extract_symbols": False,  # Pending tree-sitter/libclang integration
+                "can_extract_functions": False,
+                "can_extract_dependencies": True,  # Regex-based #include parsing
+                "dependency_extraction_level": "include_directives"
+            }
         ))
         
-        # C++ - basic support with dependency scanning, higher priority than C for .h files
+        # C++ - enhanced with parser capability flags, higher priority than C for .h files
         self.register(LanguageCapability(
             name="C++",
             extensions={".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h"},
-            has_structure_parser=False,
+            has_structure_parser=False,  # Will be True with tree-sitter/libclang
             has_dependency_scanner=True,
-            priority=9
+            priority=9,
+            parser_capabilities={
+                "can_extract_symbols": False,  # Pending tree-sitter/libclang integration
+                "can_extract_functions": False,
+                "can_extract_dependencies": True,  # Regex-based #include parsing
+                "dependency_extraction_level": "include_directives"
+            }
         ))
         
         # C# - basic support with dependency scanning
@@ -120,13 +137,19 @@ class LanguageRegistry:
             priority=8
         ))
         
-        # Rust - basic support with dependency scanning
+        # Rust - enhanced with parser capability flags
         self.register(LanguageCapability(
             name="Rust",
             extensions={".rs"},
-            has_structure_parser=False,
+            has_structure_parser=False,  # Will be True with tree-sitter
             has_dependency_scanner=True,
-            priority=8
+            priority=8,
+            parser_capabilities={
+                "can_extract_symbols": False,  # Pending tree-sitter integration
+                "can_extract_functions": False,
+                "can_extract_dependencies": True,  # Regex-based use/mod parsing
+                "dependency_extraction_level": "use_statements"
+            }
         ))
         
         # Go - basic support with dependency scanning
@@ -136,6 +159,39 @@ class LanguageRegistry:
             has_structure_parser=False,
             has_dependency_scanner=True,
             priority=8
+        ))
+        
+        # Assembly - support for multiple assembly syntaxes with label extraction
+        # Includes GNU assembler (gas), NASM, MASM
+        # Handles .globl/.global directives and label definitions
+        self.register(LanguageCapability(
+            name="ASM",
+            extensions={".s", ".S", ".asm", ".sx"},
+            has_structure_parser=True,  # Can extract symbols via regex
+            has_dependency_scanner=False,  # Assembly doesn't have imports
+            priority=8,
+            parser_capabilities={
+                "can_extract_symbols": True,
+                "can_extract_asm_labels": True,  # .globl, .global directives
+                "can_extract_functions": True,   # Function labels with .type @function
+                "can_extract_dependencies": False,
+                "dependency_extraction_level": "none"
+            }
+        ))
+        
+        # Perl - support for Perl scripts and modules
+        self.register(LanguageCapability(
+            name="Perl",
+            extensions={".pl", ".pm", ".perl"},
+            has_structure_parser=False,  # Will be True with tree-sitter
+            has_dependency_scanner=True,
+            priority=8,
+            parser_capabilities={
+                "can_extract_symbols": False,  # Pending tree-sitter integration
+                "can_extract_functions": False,  # Can extract subs with regex
+                "can_extract_dependencies": True,  # Regex-based use/require parsing
+                "dependency_extraction_level": "use_require_statements"
+            }
         ))
         
         # Java - basic support with dependency scanning

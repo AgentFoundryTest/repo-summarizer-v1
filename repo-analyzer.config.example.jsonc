@@ -95,7 +95,9 @@
     //
     // Supported languages include:
     // - Python, JavaScript, TypeScript (with full parsing support)
-    // - C, C++, C#, Rust, Go, Java, Swift (basic support)
+    // - C, C++, C#, Rust, Go, Java, Swift (basic support, enhanced with tree-sitter/libclang)
+    // - ASM (Assembly - .s, .S, .asm, .sx with .globl/.global label extraction)
+    // - Perl (.pl, .pm, .perl with use/require dependency extraction)
     // - HTML, CSS, SQL (basic support)
     // - And many more (see language_registry.py for full list)
     //
@@ -122,5 +124,58 @@
     //   "Ruby": {"enabled": false}
     // }
     "language_overrides": {}
+  },
+
+  // Parser configuration for low-level language support
+  // Controls structured parser integrations (tree-sitter, libclang) vs regex fallbacks
+  "parser_config": {
+    // Enable structured parsing (tree-sitter, libclang) when available
+    // When false, falls back to regex-based heuristics
+    // When true (default), attempts to use structured parsers if installed
+    "enable_structured_parsers": true,
+
+    // Cache parsed results for performance
+    // Highly recommended for large codebases with repeated analysis
+    "enable_parser_cache": true,
+
+    // Parser-specific settings
+    "parsers": {
+      // Tree-sitter configuration (for Rust, C, C++, Perl with tree-sitter-<lang> grammars)
+      "tree_sitter": {
+        "enabled": true,
+        // Installation: pip install tree-sitter tree-sitter-<language>
+        // Example: pip install tree-sitter tree-sitter-rust tree-sitter-c
+        "graceful_degradation": true  // Fall back to regex if unavailable
+      },
+
+      // Libclang configuration (for C/C++ with libclang Python bindings)
+      "libclang": {
+        "enabled": true,
+        // Installation: pip install libclang
+        // Requires libclang shared library (system package or conda)
+        "graceful_degradation": true  // Fall back to tree-sitter or regex if unavailable
+      }
+    },
+
+    // Language-specific parser preferences
+    // Controls which parser to prefer for each language when multiple are available
+    "language_parser_preferences": {
+      "C": ["libclang", "tree_sitter", "regex"],      // Prefer libclang for C
+      "C++": ["libclang", "tree_sitter", "regex"],    // Prefer libclang for C++
+      "Rust": ["tree_sitter", "regex"],               // Prefer tree-sitter for Rust
+      "Perl": ["tree_sitter", "regex"],               // Prefer tree-sitter for Perl
+      "ASM": ["regex"]                                 // Assembly always uses regex
+    },
+
+    // Performance tuning
+    "performance": {
+      // Skip expensive parsing for files larger than this (KB)
+      // These files will use regex fallback regardless of parser availability
+      "max_file_size_for_structured_parsing_kb": 512,
+
+      // Maximum time to spend parsing a single file (seconds)
+      // If parsing exceeds this, fall back to regex
+      "max_parse_time_seconds": 5.0
+    }
   }
 }

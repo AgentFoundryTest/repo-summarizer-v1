@@ -110,11 +110,32 @@ The registry includes built-in support for:
 - **JavaScript** (.js, .jsx, .mjs, .cjs) - Regex-based parsing, require/import resolution
 - **TypeScript** (.ts, .tsx) - Regex-based parsing, import resolution
 
-**Dependency Scanning** (with import/include parsing and external classification):
+**Enhanced Support** (with structured parsers available):
 - **C** (.c) - #include directives, stdlib header classification
+  - **Structured parsing**: libclang or tree-sitter (optional)
+  - **Capabilities**: Function/variable extraction, type analysis, AST traversal
+  - **Fallback**: Regex-based #include extraction (always available)
 - **C++** (.cpp, .cc, .cxx, .hpp, .hh, .hxx, .h) - #include directives, STL classification
-- **C#** (.cs) - using statements, System namespace classification
+  - **Structured parsing**: libclang or tree-sitter (optional)
+  - **Capabilities**: Class/template extraction, namespace resolution, AST traversal
+  - **Fallback**: Regex-based #include extraction (always available)
 - **Rust** (.rs) - use/mod statements, std crate classification
+  - **Structured parsing**: tree-sitter (optional)
+  - **Capabilities**: Function/struct/trait extraction, module resolution
+  - **Fallback**: Regex-based use/mod extraction (always available)
+- **ASM** (.s, .S, .asm, .sx) - Assembly language with label extraction
+  - **Parsing**: Regex-based (deterministic, no dependencies required)
+  - **Capabilities**: Extracts .globl/.global labels, NASM global, MASM PUBLIC directives
+  - **Supports**: GNU assembler (gas), NASM, MASM syntaxes
+  - **Symbol types**: Functions (via .type @function), data objects, generic labels
+- **Perl** (.pl, .pm, .perl) - use/require statements, core module classification
+  - **Structured parsing**: tree-sitter (optional)
+  - **Capabilities**: Subroutine/package extraction, module dependency tracking
+  - **Fallback**: Regex-based use/require extraction (always available)
+  - **Stdlib**: 60+ core Perl modules automatically classified
+
+**Dependency Scanning** (with import/include parsing and external classification):
+- **C#** (.cs) - using statements, System namespace classification
 - **Go** (.go) - import statements, stdlib package classification
 - **Java** (.java) - import statements, java/javax classification
 - **Swift** (.swift) - import statements, Foundation/UIKit classification
@@ -125,6 +146,115 @@ The registry includes built-in support for:
 **Basic Support** (file detection and metrics only):
 - Ruby, PHP, Kotlin, Scala, Shell, Bash, Zsh, PowerShell, R, Objective-C, SCSS, Sass, Less, Vue
 - Markdown, reStructuredText, YAML, JSON, XML, TOML, INI, Config files
+
+### Parser Architecture and Runtime Dependencies
+
+The analyzer uses a **layered parser architecture** for low-level language support:
+
+1. **Structured Parsers** (Optional, highest quality)
+   - **tree-sitter**: Fast, incremental parser for multiple languages
+     - Installation: `pip install tree-sitter tree-sitter-<language>`
+     - Supported: Rust, C, C++, Perl (with language-specific grammars)
+     - Benefits: Full AST access, accurate symbol extraction, semantic analysis
+   
+   - **libclang**: Official Clang compiler frontend for C/C++
+     - Installation: `pip install libclang` (+ system libclang library)
+     - Supported: C, C++
+     - Benefits: Compiler-grade accuracy, type resolution, macro expansion
+
+2. **Regex Fallback** (Always available, deterministic)
+   - No dependencies required
+   - Fast, pattern-based extraction
+   - Covers: #include directives, use/mod statements, .globl labels
+   - Limitations: No semantic analysis, no type information
+
+3. **Graceful Degradation**
+   - Parser unavailability detected at startup
+   - Automatic fallback to regex parsing
+   - Actionable error messages guide users to install optional dependencies
+   - No breaking changes - existing workflows continue to work
+
+**Performance Characteristics:**
+- **Structured parsers**: 10-50ms per file (cached), comprehensive symbol extraction
+- **Regex fallback**: 1-5ms per file, basic import/label extraction
+- **Cache layer**: Results cached per file content hash for instant repeat access
+- **Large files**: Configurable size threshold for skipping expensive parsing
+
+**Installing Optional Parser Dependencies:**
+
+```bash
+# For tree-sitter support (Rust, C, C++, Perl)
+pip install tree-sitter
+pip install tree-sitter-rust tree-sitter-c tree-sitter-cpp tree-sitter-perl
+
+# For libclang support (C/C++ with compiler-grade accuracy)
+pip install libclang
+# Also requires system libclang library:
+# - Ubuntu/Debian: apt install libclang-dev
+# - macOS: brew install llvm
+# - Windows: Download from LLVM releases
+
+# Verify installation
+repo-analyzer --parser-diagnostics  # (planned feature)
+```
+
+**Parser Configuration:**
+
+Control parser behavior via `repo-analyzer.config.json`:
+
+```jsonc
+{
+  "parser_config": {
+    "enable_structured_parsers": true,  // Use tree-sitter/libclang when available
+    "enable_parser_cache": true,         // Cache parsed results
+    "parsers": {
+      "tree_sitter": {
+        "enabled": true,
+        "graceful_degradation": true     // Fall back to regex if unavailable
+      },
+      "libclang": {
+        "enabled": true,
+        "graceful_degradation": true
+      }
+    },
+    "performance": {
+      "max_file_size_for_structured_parsing_kb": 512,  // Skip large files
+      "max_parse_time_seconds": 5.0                     // Timeout fallback
+    }
+  }
+}
+```
+
+**Operational Caveats:**
+
+- **Architecture compatibility**: tree-sitter and libclang have native components that may not be available on all platforms (ARM, older OS versions)
+- **Install size**: tree-sitter grammars add ~5-10MB per language
+- **Parse performance**: Initial parse of large files (>100KB) may take 50-200ms; subsequent parses are instant (cached)
+- **Fallback behavior**: If parsers fail to load, regex extraction continues to work - no impact on existing functionality
+- **Platform support**: Parsers are optional - core functionality works on any Python 3.8+ environment
+
+**Assembly Language Specifics:**
+
+Assembly support uses deterministic regex parsing (no optional dependencies):
+
+- **GNU assembler (gas)**: `.globl`, `.global`, `.type @function/@object`
+- **NASM**: `global`, `extern` directives
+- **MASM**: `PUBLIC`, `EXTERN` directives
+- **Label extraction**: Captures all labels with semantic type hints when available
+- **File extensions**: `.s`, `.S` (case-sensitive for preprocessed vs. non-preprocessed), `.asm`, `.sx`
+
+**Perl Language Specifics:**
+
+Perl support includes:
+
+- **Core module classification**: 60+ Perl stdlib modules automatically detected (File::Copy, Data::Dumper, etc.)
+- **Dependency extraction**: `use` and `require` statements
+- **Symbol extraction**: Subroutines (`sub name`) and packages (`package Name::Space`)
+- **Pragma handling**: Built-in pragmas (strict, warnings) classified as stdlib
+
+### Backward Compatibility
+
+All new parser features maintain full backward compatibility:
 
 #### Language Configuration Options
 

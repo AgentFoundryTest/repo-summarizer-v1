@@ -205,6 +205,54 @@ SQL_STDLIB = {
     'dual', 'sysibm', 'syscat', 'sysstat',
 }
 
+# Perl core modules (shipped with Perl distribution)
+# Source: https://perldoc.perl.org/modules
+PERL_STDLIB = {
+    # Essential modules
+    'strict', 'warnings', 'utf8', 'vars', 'constant', 'lib', 'feature',
+    'base', 'parent', 'fields', 'mro', 'attributes', 'version',
+    # File and I/O
+    'File::Basename', 'File::Copy', 'File::Find', 'File::Path', 'File::Spec',
+    'File::Temp', 'File::Compare', 'File::stat', 'FileHandle', 'IO::File',
+    'IO::Handle', 'IO::Dir', 'IO::Socket', 'IO::Select', 'IO::Pipe',
+    # Data structures
+    'Data::Dumper', 'Storable', 'Scalar::Util', 'List::Util', 'Hash::Util',
+    'Tie::Hash', 'Tie::Array', 'Tie::Scalar',
+    # Text processing
+    'Text::Wrap', 'Text::Tabs', 'Text::Abbrev', 'Text::ParseWords',
+    # System and process
+    'POSIX', 'Errno', 'Config', 'Cwd', 'Env', 'English', 'IPC::Open2', 'IPC::Open3',
+    'IPC::Cmd', 'FindBin', 'Getopt::Long', 'Getopt::Std',
+    # Time and date
+    'Time::Local', 'Time::HiRes', 'Time::gmtime', 'Time::localtime', 'Time::Piece',
+    # Testing
+    'Test::More', 'Test::Simple', 'Test::Harness', 'Test::Builder',
+    # Networking
+    'Socket', 'Net::FTP', 'Net::SMTP', 'Net::HTTP', 'Net::Domain', 'Net::Ping',
+    'LWP::Simple', 'HTTP::Request', 'HTTP::Response', 'URI',
+    # Databases
+    'DBI', 'DBD', 'AnyDBM_File', 'DB_File', 'GDBM_File', 'NDBM_File', 'ODBM_File',
+    'SDBM_File',
+    # Encoding
+    'Encode', 'Encode::Guess', 'Digest::MD5', 'Digest::SHA', 'MIME::Base64',
+    'MIME::QuotedPrint',
+    # Archives
+    'Archive::Tar', 'Archive::Zip', 'Compress::Zlib',
+    # Math
+    'Math::BigInt', 'Math::BigFloat', 'Math::Complex', 'Math::Trig',
+    # Misc utilities
+    'Benchmark', 'Carp', 'Exporter', 'ExtUtils::MakeMaker', 'AutoLoader',
+    'SelfLoader', 'Symbol', 'Sys::Hostname', 'Sys::Syslog',
+}
+
+# Common Perl pragmas (lowercase, no ::) - subset of PERL_STDLIB
+PERL_PRAGMAS = {'strict', 'warnings', 'utf8', 'vars', 'constant', 'lib', 'feature'}
+
+# Assembly languages don't have standard library imports
+# Assembly source files include headers or other .inc/.s files
+# These are typically project-specific, not standard library
+ASM_STDLIB = set()  # Empty - assembly has no standard library modules
+
 
 def classify_python_import(module_name: str) -> DependencyType:
     """
@@ -526,6 +574,46 @@ def classify_sql_import(reference: str) -> DependencyType:
     return "third-party"
 
 
+def classify_perl_import(module_name: str) -> DependencyType:
+    """
+    Classify a Perl use/require statement as stdlib or third-party.
+    
+    Args:
+        module_name: The module name to classify (e.g., 'File::Copy', 'Moose', 'Local::Module')
+    
+    Returns:
+        Classification as 'stdlib', 'third-party', or 'unknown'
+    
+    Examples:
+        >>> classify_perl_import('File::Copy')
+        'stdlib'
+        >>> classify_perl_import('Moose')
+        'third-party'
+        >>> classify_perl_import('strict')
+        'stdlib'
+    """
+    # Normalize module name
+    module_name = module_name.strip()
+    
+    # Handle file paths (e.g., require "path/to/file.pm")
+    if '/' in module_name or '\\' in module_name or module_name.endswith('.pm'):
+        # File path, not a module name - treat as unknown
+        return "unknown"
+    
+    # Check if it's a core module
+    if module_name in PERL_STDLIB:
+        return "stdlib"
+    
+    # Pragmas (lowercase, no ::) are usually core
+    if module_name.islower() and '::' not in module_name:
+        # Check against known pragma list
+        if module_name in PERL_PRAGMAS:
+            return "stdlib"
+    
+    # Everything else is third-party
+    return "third-party"
+
+
 def classify_import(module_name: str, language: str) -> DependencyType:
     """
     Classify an import based on the source file's language.
@@ -555,6 +643,11 @@ def classify_import(module_name: str, language: str) -> DependencyType:
         return classify_swift_import(module_name)
     elif language == "SQL":
         return classify_sql_import(module_name)
+    elif language == "Perl":
+        return classify_perl_import(module_name)
+    elif language == "ASM":
+        # Assembly doesn't have external dependencies in the traditional sense
+        return "unknown"
     else:
         # For unsupported languages, return unknown
         return "unknown"

@@ -75,7 +75,17 @@ LANGUAGE_MAP = {
     '.ini': 'INI',
     '.cfg': 'Config',
     '.conf': 'Config',
+    # Assembly languages
+    '.s': 'ASM',
+    '.S': 'ASM',
+    '.asm': 'ASM',
+    '.sx': 'ASM',
+    # Perl
+    '.pl': 'Perl',
+    '.pm': 'Perl',
+    '.perl': 'Perl',
 }
+
 
 # Compiled regex patterns for performance
 _TODO_PATTERN = re.compile(r'\b(TODO|FIXME)\b', re.IGNORECASE)

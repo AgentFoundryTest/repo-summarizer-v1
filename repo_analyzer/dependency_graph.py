@@ -1312,6 +1312,22 @@ def _scan_file_dependencies_with_external(
                     if include_path not in external_deps['third-party']:
                         external_deps['third-party'].append(include_path)
     
+    elif suffix in ['.pl', '.pm', '.perl']:
+        language = 'Perl'
+        # Import parser_adapters locally to avoid circular dependency
+        from repo_analyzer.parser_adapters import parse_perl_dependencies
+        perl_deps = parse_perl_dependencies(content, file_path)
+        for module in perl_deps:
+            # Perl modules don't typically resolve to files in the same way
+            # Classify all as external
+            dep_type = classify_import(module, language)
+            if dep_type == 'stdlib':
+                if module not in external_deps['stdlib']:
+                    external_deps['stdlib'].append(module)
+            elif dep_type == 'third-party':
+                if module not in external_deps['third-party']:
+                    external_deps['third-party'].append(module)
+    
     return dependencies, external_deps
 
 
