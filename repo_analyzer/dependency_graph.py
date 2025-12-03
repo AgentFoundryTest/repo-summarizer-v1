@@ -636,24 +636,43 @@ def _parse_asm_includes(content: str, file_path: Path) -> List[str]:
     
     for line in content.split('\n'):
         # Simple comment stripping - look for comment markers and check if in quotes
-        # This is a best-effort approach that handles most common cases
-        # More sophisticated parsing would require a full lexer
-        stripped_line = line
-        
         # Skip if line starts with comment
         stripped = line.strip()
         if stripped.startswith(';') or stripped.startswith('#') or stripped.startswith('//'):
             continue
         
         # For inline comments, only strip if not in quotes
-        # Simple heuristic: if there are quotes before the comment marker, likely in string
-        for comment_marker in [';', '#', '//']:
+        # Track quote state more carefully to avoid false positives
+        stripped_line = line
+        for comment_marker in [';', '#']:  # Handle ; and # separately
             if comment_marker in line:
-                before_comment = line.split(comment_marker)[0]
-                # Count quotes before comment - if odd, likely in string
-                quote_count = before_comment.count('"') + before_comment.count("'")
-                if quote_count % 2 == 0:  # Even number of quotes, not in string
-                    stripped_line = before_comment
+                # Check if marker is inside quotes by tracking quote state
+                in_single_quote = False
+                in_double_quote = False
+                for i, char in enumerate(line):
+                    if char == "'" and not in_double_quote:
+                        in_single_quote = not in_single_quote
+                    elif char == '"' and not in_single_quote:
+                        in_double_quote = not in_double_quote
+                    elif line[i:i+len(comment_marker)] == comment_marker and not in_single_quote and not in_double_quote:
+                        # Found comment marker outside quotes
+                        stripped_line = line[:i]
+                        break
+                break  # Only process first comment marker found
+        
+        # Handle // separately as it's two characters
+        if '//' in stripped_line:
+            in_single_quote = False
+            in_double_quote = False
+            for i in range(len(stripped_line) - 1):
+                char = stripped_line[i]
+                if char == "'" and not in_double_quote:
+                    in_single_quote = not in_single_quote
+                elif char == '"' and not in_single_quote:
+                    in_double_quote = not in_double_quote
+                elif stripped_line[i:i+2] == '//' and not in_single_quote and not in_double_quote:
+                    # Found comment marker outside quotes
+                    stripped_line = stripped_line[:i]
                     break
         
         # Check gas .include
@@ -1112,28 +1131,46 @@ def _resolve_asm_include(
     Returns:
         Resolved Path or None if not found/external
     """
+    # Validate input - reject potentially malicious paths
+    if '\x00' in include_path or '\n' in include_path or '\r' in include_path:
+        return None
+    
     # Get the directory containing the source file
     source_dir = source_file.parent
     
+    # Normalize repo_root to absolute path
+    repo_root = repo_root.resolve()
+    
     # Try relative to source file directory first (most common for quoted includes)
-    relative_path = source_dir / include_path
-    if relative_path.exists() and relative_path.is_file():
-        try:
-            relative_path.relative_to(repo_root)
+    try:
+        relative_path = (source_dir / include_path).resolve(strict=False)
+        # SECURITY: Ensure resolved path is within repository
+        relative_path.relative_to(repo_root)
+        if relative_path.exists() and relative_path.is_file():
             return relative_path
-        except ValueError:
-            return None
+    except (ValueError, OSError):
+        pass
     
     # Try relative to repo root
-    repo_path = repo_root / include_path
-    if repo_path.exists() and repo_path.is_file():
-        return repo_path
+    try:
+        repo_path = (repo_root / include_path).resolve(strict=False)
+        # SECURITY: Ensure resolved path is within repository
+        repo_path.relative_to(repo_root)
+        if repo_path.exists() and repo_path.is_file():
+            return repo_path
+    except (ValueError, OSError):
+        pass
     
     # Try common assembly include directories
     for asm_dir in ['include', 'inc', 'asm', 'src']:
-        candidate = repo_root / asm_dir / include_path
-        if candidate.exists() and candidate.is_file():
-            return candidate
+        try:
+            candidate = (repo_root / asm_dir / include_path).resolve(strict=False)
+            # SECURITY: Ensure resolved path is within repository
+            candidate.relative_to(repo_root)
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        except (ValueError, OSError):
+            continue
     
     return None
 
