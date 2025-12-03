@@ -126,8 +126,13 @@ def _check_libclang_available() -> Tuple[bool, Optional[str]]:
         try:
             config = clang.cindex.Config()
             # Verify the library can be loaded by attempting to get library file
-            if hasattr(config, 'library_file'):
-                _ = config.library_file
+            # Wrap in try-except as attribute access may raise even if attribute exists
+            try:
+                if hasattr(config, 'library_file'):
+                    _ = config.library_file
+            except Exception:
+                # Attribute exists but accessing it raised an exception
+                pass
             return True, None
         except Exception as e:
             return False, f"libclang library load failed: {str(e)}"
@@ -395,6 +400,9 @@ def parse_perl_dependencies(content: str, file_path: Path) -> List[str]:
     """
     dependencies = []
     
+    # Import pragma list from stdlib_classification to avoid duplication
+    from repo_analyzer.stdlib_classification import PERL_PRAGMAS
+    
     # Pattern for use statements
     # Matches: use Module::Name; or use Module::Name qw(...);
     use_pattern = re.compile(r'^\s*use\s+([\w:]+)', re.MULTILINE)
@@ -407,7 +415,7 @@ def parse_perl_dependencies(content: str, file_path: Path) -> List[str]:
     for match in use_pattern.finditer(content):
         module = match.group(1)
         # Skip pragmas and version declarations
-        if module not in ['strict', 'warnings', 'constant', 'vars', 'v5']:
+        if module not in PERL_PRAGMAS and not module.startswith('v'):
             dependencies.append(module)
     
     # Extract require statements
