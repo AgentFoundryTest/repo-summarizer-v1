@@ -2,7 +2,7 @@
 
 A Python tool for analyzing repository structure, generating file summaries, and tracking dependencies. Designed for use in CI/CD pipelines with deterministic, non-interactive operation.
 
-**Current Version**: 0.2.1 ([Changelog](CHANGELOG.md))
+**Current Version**: 0.3.0 ([Changelog](CHANGELOG.md))
 
 ## Features
 
@@ -32,6 +32,107 @@ For development:
 ```bash
 pip install -e ".[dev]"
 ```
+
+## Adoption Checklist for v0.3.0
+
+If you're upgrading from v0.2.x or adopting the new low-level language support, use this checklist:
+
+### Required Steps (Zero-Configuration)
+
+- [ ] **Verify Python version**: Ensure Python 3.8 or higher is installed
+- [ ] **Install/upgrade package**: Run `pip install -e .` or upgrade via your package manager
+- [ ] **Test basic functionality**: Run `repo-analyzer scan --dry-run` to verify installation
+- [ ] **Review output**: Check that existing Python/JavaScript/TypeScript analysis works unchanged
+
+### Optional Steps (Enhanced Low-Level Language Support)
+
+If your repository contains C, C++, Rust, Assembly, or Perl code and you want enhanced parsing accuracy:
+
+- [ ] **Assess parser needs**: 
+  - Regex parsing (always available) provides production-ready symbol extraction
+  - Structured parsers (optional) provide enhanced semantic analysis
+  - Decision point: Do you need compiler-grade accuracy or is symbol-level extraction sufficient?
+
+- [ ] **For tree-sitter support** (Rust, C, C++, Perl with enhanced accuracy):
+  ```bash
+  # Install tree-sitter base package
+  pip install tree-sitter
+  
+  # Install language-specific grammars as needed
+  pip install tree-sitter-rust     # For Rust
+  pip install tree-sitter-c        # For C
+  pip install tree-sitter-cpp      # For C++
+  pip install tree-sitter-perl     # For Perl
+  ```
+  - [ ] Verify installation: Check CLI output for parser availability messages
+  - [ ] Note: Adds ~5-10MB per language, may have platform compatibility requirements
+
+- [ ] **For libclang support** (C/C++ with compiler-grade accuracy):
+  ```bash
+  # Install Python bindings
+  pip install libclang
+  
+  # Install system library (platform-specific)
+  # Ubuntu/Debian:
+  sudo apt install libclang-dev
+  
+  # macOS:
+  brew install llvm
+  
+  # Windows:
+  # Download from https://releases.llvm.org/
+  ```
+  - [ ] Verify installation: Check CLI output for libclang availability
+  - [ ] Note: Requires system dependencies, may not be available on all platforms
+
+- [ ] **Configure parser preferences** (optional):
+  - [ ] Copy `repo-analyzer.config.example.jsonc` to `repo-analyzer.config.json`
+  - [ ] Customize `parser_config` section if needed (defaults work for most cases)
+  - [ ] Set language-specific parser preferences if you have specific requirements
+
+### Configuration Review
+
+- [ ] **Update configuration file** (if using custom config):
+  - [ ] Review new `parser_config` section in `repo-analyzer.config.example.jsonc`
+  - [ ] Consider adding parser configuration for performance tuning
+  - [ ] Set `enabled_languages` explicitly if you want to disable auto-detection
+
+- [ ] **Review language configuration**:
+  - [ ] Auto-detection is enabled by default (zero-config)
+  - [ ] Explicitly set `enabled_languages` only if you want to limit analysis scope
+  - [ ] Use `disabled_languages` to exclude specific languages from analysis
+
+### Validation Steps
+
+- [ ] **Run full scan**: Execute `repo-analyzer scan` on your repository
+- [ ] **Check auto-detection**: Verify that low-level languages are detected (if present)
+- [ ] **Review parser status**: Check CLI output for parser availability and recommendations
+- [ ] **Inspect output files**: Verify that symbol extraction works for your low-level language files
+- [ ] **Compare with baseline**: If migrating, compare output with previous version for consistency
+
+### CI/CD Integration
+
+- [ ] **Update CI configuration**: No changes needed unless adding optional parsers
+- [ ] **Document parser dependencies**: Add installation steps to CI scripts if using structured parsers
+- [ ] **Verify air-gapped operation**: Confirm that analysis works without network access
+- [ ] **Test offline install**: Verify that optional parser dependencies can be pre-installed
+
+### Troubleshooting
+
+If you encounter issues:
+
+- **Parser not available**: Check installation instructions in CLI output
+- **Platform compatibility**: Structured parsers may not be available on ARM or older OS versions
+  - Fallback: Regex parsing provides full functionality on all platforms
+- **Performance concerns**: Adjust `max_file_size_for_structured_parsing_kb` in parser config
+- **False positives/negatives**: Review parser selection and consider switching between regex/structured
+
+### Migration Notes
+
+- **Backward compatibility**: All existing functionality works unchanged
+- **No breaking changes**: Configuration files from v0.2.x are valid in v0.3.0
+- **Optional features**: Low-level language support is additive - existing workflows unaffected
+- **Zero mandatory dependencies**: Core functionality requires no new dependencies
 
 ## Quick Start
 
