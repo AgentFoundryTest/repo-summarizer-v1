@@ -245,6 +245,9 @@ PERL_STDLIB = {
     'SelfLoader', 'Symbol', 'Sys::Hostname', 'Sys::Syslog',
 }
 
+# Common Perl pragmas (lowercase, no ::) - subset of PERL_STDLIB
+PERL_PRAGMAS = {'strict', 'warnings', 'utf8', 'vars', 'constant', 'lib', 'feature'}
+
 # Assembly languages don't have standard library imports
 # Assembly source files include headers or other .inc/.s files
 # These are typically project-specific, not standard library
@@ -603,8 +606,8 @@ def classify_perl_import(module_name: str) -> DependencyType:
     
     # Pragmas (lowercase, no ::) are usually core
     if module_name.islower() and '::' not in module_name:
-        # Common pragmas not in the list
-        if module_name in ['strict', 'warnings', 'utf8', 'vars', 'constant', 'lib', 'feature']:
+        # Check against known pragma list
+        if module_name in PERL_PRAGMAS:
             return "stdlib"
     
     # Everything else is third-party

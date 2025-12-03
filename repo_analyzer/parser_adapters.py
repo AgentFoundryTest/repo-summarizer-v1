@@ -121,13 +121,20 @@ def _check_libclang_available() -> Tuple[bool, Optional[str]]:
     """
     try:
         import clang.cindex
-        # Check if library can be loaded
-        clang.cindex.Config.library_file  # Will raise if not configured
-        return True, None
+        # Try to access Config to verify library can be loaded
+        # This may raise if libclang shared library is not found
+        try:
+            config = clang.cindex.Config()
+            # Verify the library can be loaded by attempting to get library file
+            if hasattr(config, 'library_file'):
+                _ = config.library_file
+            return True, None
+        except Exception as e:
+            return False, f"libclang library load failed: {str(e)}"
     except ImportError:
         return False, "libclang Python package not installed (pip install libclang)"
     except Exception as e:
-        return False, f"libclang load failed: {str(e)}"
+        return False, f"libclang import failed: {str(e)}"
 
 
 def get_parser_capability(language: str) -> ParserCapability:
@@ -264,8 +271,8 @@ def parse_asm_symbols(content: str, file_path: Path) -> ParsedSymbols:
     globl_pattern = re.compile(r'^\s*\.glob(?:al|l)\s+([A-Za-z_][A-Za-z0-9_]*)', re.MULTILINE)
     
     # Pattern for .type directives (indicates function vs object)
-    # Matches: .type symbol_name, @function or .type symbol_name, @object
-    type_pattern = re.compile(r'^\s*\.type\s+([A-Za-z_][A-Za-z0-9_]*)\s*,\s*[@%]+(function|object)', re.MULTILINE)
+    # Matches: .type symbol_name, @function or .type symbol_name, %function
+    type_pattern = re.compile(r'^\s*\.type\s+([A-Za-z_][A-Za-z0-9_]*)\s*,\s*[@%](function|object)', re.MULTILINE)
     
     # Pattern for NASM global directives
     # Matches: global symbol_name
