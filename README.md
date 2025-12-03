@@ -961,6 +961,8 @@ The dependency scanner now supports the following languages with import/include 
 | **JavaScript/TypeScript** | `import`, `require()`, `import()` | ✅ Intra-repo + External | ✅ Node core vs npm |
 | **C/C++** | `#include <...>`, `#include "..."` | ✅ Intra-repo + External | ✅ System headers vs 3rd-party |
 | **Rust** | `use`, `mod` | ✅ Intra-repo + External | ✅ std/core vs crates |
+| **ASM** | `.include`, `%include`, `include` | ✅ Intra-repo includes | N/A (project-specific) |
+| **Perl** | `use`, `require` | External only | ✅ Core modules vs CPAN |
 | **Go** | `import` | External only | ✅ stdlib vs packages |
 | **Java** | `import`, `import static` | External only | ✅ java.*/javax.* vs 3rd-party |
 | **C#** | `using` | External only | ✅ System.*/Microsoft.* vs 3rd-party |
@@ -978,7 +980,14 @@ The dependency scanner now supports the following languages with import/include 
 **C/C++:**
 - Parses `#include <header>` and `#include "header"` directives
 - Resolves headers relative to source file, include directories, and repo root
-- Classifies standard library headers (stdio.h, iostream, etc.) vs third-party (boost, etc.)
+- Classifies standard library headers (stdio.h, iostream, etc.) vs third-party (boost, openssl, etc.)
+- Enhanced stdlib classification includes:
+  - Standard C library (stdio.h, stdlib.h, string.h, etc.)
+  - C++ STL (vector, map, algorithm, etc.)
+  - POSIX headers (unistd.h, pthread.h, sys/socket.h, etc.)
+  - Compiler builtins (stdatomic.h, stdalign.h, etc.)
+  - Windows headers (windows.h, winsock2.h, etc.)
+- Common third-party libraries detected: Boost, OpenSSL, zlib, libcurl, SQLite, Google Test, Qt, GTK
 - Skips comments to avoid false positives
 
 **Rust:**
@@ -986,6 +995,31 @@ The dependency scanner now supports the following languages with import/include 
 - Resolves local modules via file system (module.rs, module/mod.rs patterns)
 - Handles crate-relative (`crate::`), self-relative (`self::`), and parent-relative (`super::`) imports
 - Classifies std/core/alloc crates as stdlib
+
+**ASM (Assembly):**
+- Supports multiple assembly syntaxes:
+  - **GNU assembler (gas)**: `.include "file.inc"`
+  - **NASM**: `%include "file.inc"`
+  - **MASM**: `include file.inc`
+- Resolves includes relative to:
+  - Source file directory (most common)
+  - Repository root
+  - Common directories: `include/`, `inc/`, `asm/`, `src/`
+- File extensions: `.s`, `.S`, `.asm`, `.sx`
+- Comment styles recognized: `;`, `#`, `//`
+- Assembly includes are project-specific; no external classification
+
+**Perl:**
+- Parses `use Module::Name` and `require` statements
+- Enhanced core module detection (150+ modules):
+  - Essential pragmas (strict, warnings, utf8, etc.)
+  - File I/O (File::Copy, File::Path, IO::File, etc.)
+  - Data structures (Data::Dumper, Storable, Scalar::Util, etc.)
+  - Testing (Test::More, Test::Simple, etc.)
+  - Networking (LWP::Simple, HTTP::Request, Net::FTP, etc.)
+- Common CPAN modules detected: Moose, Dancer, DBIx::Class, DateTime, Template Toolkit, etc.
+- Pragmas and core modules classified as stdlib
+- Third-party CPAN modules automatically detected
 
 **Go:**
 - Parses single-line `import "package"` and multi-line `import (...)` blocks
@@ -1067,13 +1101,76 @@ Classification is deterministic and based on comprehensive reference tables main
 
 - **Python**: 150+ stdlib modules (os, sys, pathlib, typing, asyncio, collections, etc.)
 - **Node.js**: 80+ core modules (fs, path, http, https, crypto, stream, etc.)
-- **C/C++**: 100+ standard headers (stdio.h, iostream, vector, algorithm, etc.)
+- **C/C++**: 150+ standard headers with enhanced classification:
+  - C standard library (stdio.h, stdlib.h, string.h, math.h, etc.)
+  - C++ STL (vector, map, algorithm, iostream, filesystem, etc.)
+  - POSIX headers (unistd.h, pthread.h, sys/socket.h, netinet/in.h, etc.)
+  - Compiler builtins (stdatomic.h, stdalign.h, stdnoreturn.h, threads.h)
+  - Windows headers (windows.h, winsock2.h, ws2tcpip.h, etc.)
+  - Known third-party: Boost, OpenSSL, zlib, libcurl, SQLite, Google Test, Catch2, Qt, GTK, SDL, Vulkan
 - **Rust**: 40+ stdlib crates/modules (std::*, core::*, alloc::*)
 - **Go**: 150+ stdlib packages (fmt, os, net/http, encoding/json, etc.)
 - **Java**: 20+ stdlib packages (java.util, java.io, javax.swing, etc.)
 - **C#**: 15+ stdlib namespaces (System.*, Microsoft.*)
 - **Swift**: 15+ stdlib modules (Foundation, UIKit, SwiftUI, Combine, etc.)
+- **Perl**: 150+ core modules with enhanced classification:
+  - Pragmas (strict, warnings, utf8, feature, etc.)
+  - File I/O (File::Copy, File::Find, IO::File, etc.)
+  - Data structures (Data::Dumper, Storable, List::Util, etc.)
+  - Testing (Test::More, Test::Simple, Test::Harness)
+  - Networking (LWP::Simple, Net::FTP, HTTP::Request, etc.)
+  - Known CPAN: Moose, Dancer, Catalyst, DBIx::Class, Template Toolkit, DateTime, AnyEvent
 - **SQL**: System schemas (information_schema, pg_catalog, sys, etc.)
+- **ASM**: No external dependencies (assembly includes are project-specific)
+
+#### Multi-Language Dependency Graphs
+
+The dependency scanner can analyze complex multi-language projects like OpenSSL, Linux kernel modules, or embedded systems:
+
+**Example: C + Assembly Project**
+```
+crypto/
+├── aes.c          -> includes crypto.h
+├── crypto.h       -> defines interfaces
+└── aes_x86_64.s   -> includes macros.inc (ASM optimization)
+```
+
+Dependency graph captures:
+- C-to-C header dependencies
+- Assembly-to-assembly include chains
+- External stdlib classification (stdio.h, sys/types.h)
+- Deterministic path resolution across languages
+
+**Example: Rust + C FFI**
+```
+src/
+├── lib.rs         -> uses crate::bindings
+└── bindings/
+    ├── mod.rs     -> declares C FFI functions
+    ├── native.c   -> includes native.h
+    └── native.h   -> C API declarations
+```
+
+Dependency graph tracks:
+- Rust module hierarchy (lib.rs -> bindings/mod.rs)
+- C header dependencies (native.c -> native.h)
+- External dependencies (std::*, libc headers)
+- Cross-language boundaries (Rust FFI declarations)
+
+**Example: OpenSSL-like Structure**
+```
+include/
+└── openssl/
+    ├── crypto.h
+    └── ssl.h
+crypto/
+├── crypto.c       -> includes ../include/openssl/crypto.h
+└── aes_asm.s      -> assembly optimizations
+perl/
+└── test.pl        -> uses Test::More (Perl tests)
+```
+
+All dependencies resolved deterministically with proper classification.
 
 #### Limitations and Troubleshooting
 
@@ -1089,27 +1186,49 @@ Classification is deterministic and based on comprehensive reference tables main
 **Missing Dependencies:**
 - For C/C++: Generated headers or headers in non-standard locations may not resolve
 - For Rust: Complex module structures or procedural macros may not resolve
+- For Assembly: Binary blobs or platform-specific directives without file extensions won't be tracked
 - For HTML/CSS: Dynamically generated asset references won't be detected
 
 **External Dependencies Not Classified:**
 - Custom/uncommon standard library modules may be misclassified as third-party
 - Vendor-specific SQL extensions may not be recognized as system objects
+- Assembly dependencies are always project-specific (no stdlib classification)
+
+**Conditional Includes:**
+- C/C++ preprocessor conditionals (`#ifdef`, `#ifndef`, `#if`) are not evaluated
+- All includes are tracked regardless of conditional compilation
+- This ensures complete dependency visibility but may include inactive code paths
+- **Limitation**: Cannot determine which includes are active for a specific build configuration
+
+**Headers Shared Across Implementations:**
+- Edge deduplication prevents duplicate dependencies
+- Same header included by multiple sources creates single edge per source
+- Example: `utils.h` included by `a.c` and `b.c` creates two edges (not four)
 
 **Troubleshooting Tips:**
 1. Check that file extensions are correctly mapped to languages
 2. Verify that include paths are relative to source file or repo root
 3. For missing intra-repo edges, check if files exist at expected paths
 4. For misclassified external deps, check if module is in stdlib tables
-5. Use verbose logging (if available) to see which imports were detected
+5. For assembly includes, ensure file uses standard directive syntax (`.include`, `%include`, `include`)
+6. For Perl modules, verify module names use `::` separator (not file paths)
+7. Use verbose logging (if available) to see which imports were detected
 
 **Performance Considerations:**
 - Large monorepos (10,000+ files) may take several minutes to analyze
 - Disable unused languages via `language_config` to improve performance
 - Binary files and very large text files are automatically skipped
 
+**Assembly-Specific Considerations:**
+- Multiple syntax support: gas (`.include`), NASM (`%include`), MASM (`include`)
+- Comment syntax recognized: `;`, `#`, `//`
+- Include resolution searches: source directory, repo root, `include/`, `inc/`, `asm/`, `src/`
+- Platform-specific directives (e.g., Windows vs Linux paths) are handled as-is
+- Binary blob references (without file extensions) won't resolve but won't cause errors
+
 ## Testing
 
-The repository includes a comprehensive test suite with 390+ tests covering all features and edge cases.
+The repository includes a comprehensive test suite with 410+ tests covering all features and edge cases.
 
 ### Running Tests
 
