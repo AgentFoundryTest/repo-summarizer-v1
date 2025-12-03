@@ -2128,9 +2128,10 @@ global _start
     def test_masm_includes(self, tmp_path):
         """Test parsing MASM include directives."""
         content = """
-; MASM syntax
+; MASM syntax (both quoted and unquoted)
 include macros.inc
 INCLUDE defs.inc
+include "quoted.inc"
 .code
 main PROC
 """
@@ -2139,6 +2140,7 @@ main PROC
         
         assert 'macros.inc' in includes
         assert 'defs.inc' in includes
+        assert 'quoted.inc' in includes
     
     def test_mixed_syntax(self, tmp_path):
         """Test parsing multiple assembly syntax directives."""
@@ -2173,17 +2175,17 @@ include masm_file.inc
     
     def test_path_with_slashes(self, tmp_path):
         """Test includes with path separators."""
-        content = """
+        content = r"""
 .include "inc/macros.inc"
 %include "common/defs.asm"
-include utils\\helpers.inc
+include utils\helpers.inc
 """
         file_path = tmp_path / "test.s"
         includes = _parse_asm_includes(content, file_path)
         
         assert 'inc/macros.inc' in includes
         assert 'common/defs.asm' in includes
-        assert 'utils\\helpers.inc' in includes
+        assert r'utils\helpers.inc' in includes
 
 
 class TestResolveAsmInclude:

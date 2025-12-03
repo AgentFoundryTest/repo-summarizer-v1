@@ -611,7 +611,7 @@ def _parse_asm_includes(content: str, file_path: Path) -> List[str]:
     Supports multiple assembly syntaxes:
     - GNU assembler (gas): .include "file.inc"
     - NASM: %include "file.inc"
-    - MASM: include file.inc
+    - MASM: include file.inc or include "file.inc"
     
     Args:
         content: File content as string
@@ -622,20 +622,6 @@ def _parse_asm_includes(content: str, file_path: Path) -> List[str]:
     """
     includes = []
     
-    # Remove comments to avoid false positives
-    # Assembly comments: ; (most syntaxes), # (gas), // (some assemblers)
-    lines = []
-    for line in content.split('\n'):
-        # Remove comments
-        if ';' in line:
-            line = line.split(';')[0]
-        if '#' in line:
-            line = line.split('#')[0]
-        if '//' in line:
-            line = line.split('//')[0]
-        lines.append(line)
-    content = '\n'.join(lines)
-    
     # GNU assembler (gas) .include directive
     # Matches: .include "file.inc" or .include "path/to/file.s"
     gas_include_pattern = r'^\s*\.include\s+["\']([^"\']+)["\']'
@@ -644,27 +630,51 @@ def _parse_asm_includes(content: str, file_path: Path) -> List[str]:
     # Matches: %include "file.inc" or %include 'file.asm'
     nasm_include_pattern = r'^\s*%include\s+["\']([^"\']+)["\']'
     
-    # MASM include directive
-    # Matches: include file.inc or INCLUDE path\file.inc
-    masm_include_pattern = r'^\s*include\s+([^\s;]+)'
+    # MASM include directive (supports both quoted and unquoted)
+    # Matches: include file.inc, INCLUDE path\file.inc, or include "file.inc"
+    masm_include_pattern = r'^\s*include\s+(?:["\']([^"\']+)["\']|([^\s;]+))'
     
     for line in content.split('\n'):
+        # Simple comment stripping - look for comment markers and check if in quotes
+        # This is a best-effort approach that handles most common cases
+        # More sophisticated parsing would require a full lexer
+        stripped_line = line
+        
+        # Skip if line starts with comment
+        stripped = line.strip()
+        if stripped.startswith(';') or stripped.startswith('#') or stripped.startswith('//'):
+            continue
+        
+        # For inline comments, only strip if not in quotes
+        # Simple heuristic: if there are quotes before the comment marker, likely in string
+        for comment_marker in [';', '#', '//']:
+            if comment_marker in line:
+                before_comment = line.split(comment_marker)[0]
+                # Count quotes before comment - if odd, likely in string
+                quote_count = before_comment.count('"') + before_comment.count("'")
+                if quote_count % 2 == 0:  # Even number of quotes, not in string
+                    stripped_line = before_comment
+                    break
+        
         # Check gas .include
-        match = re.match(gas_include_pattern, line, re.IGNORECASE)
+        match = re.match(gas_include_pattern, stripped_line, re.IGNORECASE)
         if match:
             includes.append(match.group(1))
             continue
         
         # Check NASM %include
-        match = re.match(nasm_include_pattern, line, re.IGNORECASE)
+        match = re.match(nasm_include_pattern, stripped_line, re.IGNORECASE)
         if match:
             includes.append(match.group(1))
             continue
         
-        # Check MASM include
-        match = re.match(masm_include_pattern, line, re.IGNORECASE)
+        # Check MASM include (try both quoted and unquoted groups)
+        match = re.match(masm_include_pattern, stripped_line, re.IGNORECASE)
         if match:
-            includes.append(match.group(1))
+            # Group 1 is quoted, group 2 is unquoted
+            include_file = match.group(1) if match.group(1) else match.group(2)
+            if include_file:
+                includes.append(include_file)
     
     return includes
 
